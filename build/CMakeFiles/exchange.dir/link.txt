@@ -1,1 +1,0 @@
-/usr/bin/c++ -g -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/exchange.dir/src/main.cpp.o CMakeFiles/exchange.dir/src/order_simulator.cpp.o CMakeFiles/exchange.dir/src/orderbook.cpp.o CMakeFiles/exchange.dir/src/matching_engine.cpp.o -o exchange
