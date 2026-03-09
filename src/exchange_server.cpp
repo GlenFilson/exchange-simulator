@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <cstring>
 #include "network_utils.hpp"
+#include <netinet/tcp.h>
 
 ExchangeServer::ExchangeServer(uint16_t port, OrderBook& order_book, MatchingEngine& matching_engine, Serializer& serializer)
     : port_{port}
@@ -32,7 +33,8 @@ void ExchangeServer::start(){
     //5 = backlog, how many pending connections to queue
     int listen_result = listen(server_fd_, 5);
     if(listen_result == -1) throw std::runtime_error("listen failed");
-
+    int flag = 1;
+    setsockopt(server_fd_, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
 }
 
 void ExchangeServer::run(){
@@ -41,6 +43,8 @@ void ExchangeServer::run(){
     socklen_t client_len = sizeof(client_addr);
     client_fd_ = accept(server_fd_, (sockaddr*)&client_addr, &client_len);
     if (client_fd_ == -1) throw std::runtime_error("accept failed");
+    int flag = 1;
+    setsockopt(client_fd_, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
     //here the program waits for a client to connect, blocking
     while(true){
         Message message;
@@ -49,9 +53,6 @@ void ExchangeServer::run(){
 
     }
     close(client_fd_);
-
-
-
 }
 
 void ExchangeServer::handle_message(const Message& message){

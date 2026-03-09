@@ -8,7 +8,7 @@ bool read_exact(int fd, uint8_t* buffer, size_t n){
     while(total_read < n){
         //recv can return -1, so we need signed version of size_t, ssize_t
         ssize_t bytes_read = recv(fd, buffer + total_read, n - total_read, 0);
-        if(bytes_read < 0) return false;
+        if(bytes_read <= 0) return false;
         total_read += bytes_read;
     }
     //if all bytes read
@@ -17,11 +17,15 @@ bool read_exact(int fd, uint8_t* buffer, size_t n){
 
 void send_message(int fd, const Message& message){
     uint8_t type = static_cast<uint8_t>(message.type);
-    //send(file descriptor, source, size, protocol)
-    send(fd, &type, 1, 0);
     uint32_t length = message.payload.size();
-    send(fd, &length, sizeof(uint32_t), 0);
-    send(fd, message.payload.data(), length, 0);
+    //store all in a single message, rather than sending each segment individually
+    //each send triggers a syscall, so best to minimise by packing all data into 1 message
+    std::vector<uint8_t> buffer(1+sizeof(uint32_t) + length);
+    buffer[0] = type;
+    std::memcpy(buffer.data() + 1, &length, sizeof(uint32_t));
+    std::memcpy(buffer.data() + 1 + sizeof(uint32_t), message.payload.data(), length);
+    //send(file descriptor, source, size, protocol)
+    send(fd, buffer.data(), buffer.size(), 0);
 }
 
 bool read_message(int fd, Message& message){
