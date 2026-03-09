@@ -6,6 +6,7 @@
 #include <optional>
 #include <cstdint>
 #include <iterator>
+#include <ostream>
 
 
 //return std::optional to protect incase the maps are empty
@@ -75,6 +76,40 @@ void OrderBook::cancel_order(uint64_t id){
     }else{
         throw std::invalid_argument("order id not found in the book");
     }
+
+}
+
+void OrderBook::print_depth(std::ostream& out, int levels) const{
+        out << "---order book---" << "\n";
+        std::vector<std::pair<double, uint32_t>> asks;
+        asks.reserve(std::min(levels, static_cast<int>(asks_.size())));
+        auto asks_it = asks_.begin();
+        for(int i = 0; i < levels && asks_it!=asks_.end(); i ++){
+            double price = asks_it->first;
+            uint32_t total_quantity{0};
+            for (const Order& order : asks_it->second){
+                total_quantity+=order.quantity();
+            }
+            asks.emplace_back(price, total_quantity);
+            //advance the iterator
+            ++asks_it;
+        }
+        //print the asks
+        for (auto rit = asks.rbegin(); rit!=asks.rend(); ++rit){
+            out << " ASK " << rit->first << " | " << rit->second << "\n";
+        }
+        out << "--------------" << "\n";
+        auto bids_it = bids_.begin();
+        for(int i = 0; i < levels && bids_it!= bids_.end(); i++){
+            double price = bids_it->first;
+            uint32_t total_quantity{0};
+            for (const Order& order : bids_it->second){
+                total_quantity+=order.quantity();
+            }
+            out << " BID " << price << " | " << total_quantity << "\n";
+            ++bids_it;
+        }
+        
 
 }
 

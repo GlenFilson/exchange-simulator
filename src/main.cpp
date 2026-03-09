@@ -3,36 +3,27 @@
 #include "order_simulator.hpp"
 #include "orderbook.hpp"
 #include "matching_engine.hpp"
-void print_book(const OrderBook& book) {
-    auto bid = book.best_bid();
-    auto ask = book.best_ask();
-    std::cout << "best bid: " << (bid.has_value() ? std::to_string(bid.value()) : "none")
-              << " | best ask: " << (ask.has_value() ? std::to_string(ask.value()) : "none")
-              << "\n";
-}
+#include <fstream>
+#include <thread>
+#include <chrono>
 
 int main(){
     OrderBook orderBook;
+    OrderSimulator orderSimulator(1000);
     MatchingEngine matchingEngine(orderBook);
+    std::ofstream trade_log("trades.log");
+    while(true){
+        std::cout << "\033[2J\033[H";  // clear screen and move cursor to top
+        orderBook.print_depth(std::cout, 5);
+        Order order = orderSimulator.generate_order();
+        std::vector<Trade> trades = matchingEngine.match(order);
+        for (const Trade& trade : trades){
+            trade_log << "timestamp: " << trade.timestamp << ", price: " << trade.price << ", quantity: " << trade.quantity << ", buyer_order_id: " << trade.buyer_order_id << ", seller_order_id: " << trade.seller_order_id << std::endl;
 
-    Order ask1(1, 100.0, 50, Side::ASK, OrderType::LIMIT);
-    Order bid1(2, 100, 30, Side::BID, OrderType::LIMIT);
-    Order bid2(3, 100, 80, Side::BID, OrderType::LIMIT);
-    std::vector<Trade> trades;
-    orderBook.add_order(ask1);
-    print_book(orderBook);
-    trades = matchingEngine.match(bid1);
-    for (Trade trade : trades){
-        std::cout << "Trade!" << "\n";
-        std::cout << "price: " << trade.price << " buyer_id: " << trade.buyer_order_id << " seller_id: " << trade.seller_order_id << " quantity: " << trade.quantity << " timestamp: " << trade.timestamp << "\n";
+        } 
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     }
-   print_book(orderBook);
-    trades = matchingEngine.match(bid2);
-    for (Trade trade : trades){
-        std::cout << "Trade!" << "\n";
-        std::cout << "price: " << trade.price << " buyer_id: " << trade.buyer_order_id << " seller_id: " << trade.seller_order_id << " quantity: " << trade.quantity << " timestamp: " << trade.timestamp << "\n";
-    }
-    print_book(orderBook);
 
     return 0;
 }

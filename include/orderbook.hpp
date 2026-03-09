@@ -6,6 +6,7 @@
 #include "order.hpp"
 #include <cstdint>
 #include <unordered_map>
+#include <ostream>
 
 
 class OrderBook {
@@ -17,8 +18,7 @@ class OrderBook {
         //take reference to order, not order itself. dont copy
         void add_order(const Order& order);
         void cancel_order(uint64_t id);
-
-
+        void print_depth(std::ostream& out, int levels) const;
 
 
     private:
