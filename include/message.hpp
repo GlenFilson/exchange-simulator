@@ -9,7 +9,8 @@ enum class MessageType : uint8_t {
     CANCEL_ORDER = 2,
     ORDER_ACK = 3,
     REJECT = 4,
-    TRADE = 5
+    TRADE = 5,
+    CANCEL_ACK = 6
 };
 
 struct Message{

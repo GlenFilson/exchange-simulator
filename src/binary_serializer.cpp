@@ -216,3 +216,23 @@ Trade BinarySerializer::deserialize_trade(const Message& message){
     };
     return trade;
 }
+
+Message BinarySerializer::serialize_cancel_ack(const Acknowledgement& acknowledgement){
+    std::vector<uint8_t> payload(sizeof(uint64_t));
+    std::memcpy(payload.data(), &acknowledgement.id, sizeof(uint64_t));
+
+    Message message{
+        .type = MessageType::CANCEL_ACK,
+        .payload = payload
+    };
+    return message;
+}
+
+Acknowledgement BinarySerializer::deserialize_cancel_ack(const Message& message){
+    uint64_t id;
+    std::memcpy(&id, message.payload.data(), sizeof(uint64_t));
+    Acknowledgement acknowledgement{
+        .id = id
+    };
+    return acknowledgement;
+}

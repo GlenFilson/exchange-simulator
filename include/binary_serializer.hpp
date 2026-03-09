@@ -25,6 +25,9 @@ class BinarySerializer : public Serializer {
         Message serialize_trade(const Trade& trade) override;
         Trade deserialize_trade(const Message& message) override;
 
+        Message serialize_cancel_ack(const Acknowledgement& acknowledgement) override;
+        Acknowledgement deserialize_cancel_ack(const Message& message) override;
+
 
 };
 

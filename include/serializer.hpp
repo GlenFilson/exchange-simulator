@@ -26,7 +26,9 @@ class Serializer {
         
         virtual Message serialize_trade(const Trade& trade) = 0;  
         virtual Trade deserialize_trade(const Message& message) = 0;
-        
+       
+        virtual Message serialize_cancel_ack(const Acknowledgement& acknowledgement) = 0;
+        virtual Acknowledgement deserialize_cancel_ack(const Message& message) = 0;
 
 
         /*
