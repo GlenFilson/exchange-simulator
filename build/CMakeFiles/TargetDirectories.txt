@@ -1,0 +1,3 @@
+/Users/glen/Dev/exchange-simulator/build/CMakeFiles/exchange.dir
+/Users/glen/Dev/exchange-simulator/build/CMakeFiles/edit_cache.dir
+/Users/glen/Dev/exchange-simulator/build/CMakeFiles/rebuild_cache.dir
