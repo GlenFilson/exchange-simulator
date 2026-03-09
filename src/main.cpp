@@ -2,40 +2,37 @@
 #include "order.hpp"
 #include "order_simulator.hpp"
 #include "orderbook.hpp"
-
+#include "matching_engine.hpp"
+void print_book(const OrderBook& book) {
+    auto bid = book.best_bid();
+    auto ask = book.best_ask();
+    std::cout << "best bid: " << (bid.has_value() ? std::to_string(bid.value()) : "none")
+              << " | best ask: " << (ask.has_value() ? std::to_string(ask.value()) : "none")
+              << "\n";
+}
 
 int main(){
     OrderBook orderBook;
-    OrderSimulator orderSimulator(500.0);
-    std::vector<Order> simulated_orders = orderSimulator.generate_n_orders(5);
-    for (Order& order : simulated_orders){
-          orderBook.add_order(order);
-        //   order.toString();
-          auto bid = orderBook.best_bid();
-          auto ask = orderBook.best_ask();
-          std::cout 
-          << "best bid: " 
-          << (bid.has_value() ? std::to_string(bid.value()) : "none") 
-          << " | best ask: " 
-          << (ask.has_value() ? std::to_string(ask.value()) : "none") 
-          << std::endl;
+    MatchingEngine matchingEngine(orderBook);
+
+    Order ask1(1, 100.0, 50, Side::ASK, OrderType::LIMIT);
+    Order bid1(2, 100, 30, Side::BID, OrderType::LIMIT);
+    Order bid2(3, 100, 80, Side::BID, OrderType::LIMIT);
+    std::vector<Trade> trades;
+    orderBook.add_order(ask1);
+    print_book(orderBook);
+    trades = matchingEngine.match(bid1);
+    for (Trade trade : trades){
+        std::cout << "Trade!" << "\n";
+        std::cout << "price: " << trade.price << " buyer_id: " << trade.buyer_order_id << " seller_id: " << trade.seller_order_id << " quantity: " << trade.quantity << " timestamp: " << trade.timestamp << "\n";
     }
-    // Order bid1(1, 100.0, 10, Side::BID, OrderType::LIMIT);
-    // Order bid2(2, 105.0, 10, Side::BID, OrderType::LIMIT);
-    // Order ask1(3, 110.0, 10, Side::ASK, OrderType::LIMIT);
-
-    // orderBook.add_order(bid1);
-    // orderBook.add_order(bid2);
-    // orderBook.add_order(ask1);
-
-    // std::cout << "best bid: " << orderBook.best_bid().value() << "\n";   // expect 105
-    // std::cout << "best ask: " << orderBook.best_ask().value() << "\n";   // expect 110
-
-    // orderBook.cancel_order(2);  // cancel the 105 bid
-
-    // std::cout << "after cancel:\n";
-    // std::cout << "best bid: " << orderBook.best_bid().value() << "\n";   // expect 100
-    // std::cout << "best ask: " << orderBook.best_ask().value() << "\n";   // expect 110
+   print_book(orderBook);
+    trades = matchingEngine.match(bid2);
+    for (Trade trade : trades){
+        std::cout << "Trade!" << "\n";
+        std::cout << "price: " << trade.price << " buyer_id: " << trade.buyer_order_id << " seller_id: " << trade.seller_order_id << " quantity: " << trade.quantity << " timestamp: " << trade.timestamp << "\n";
+    }
+    print_book(orderBook);
 
     return 0;
 }

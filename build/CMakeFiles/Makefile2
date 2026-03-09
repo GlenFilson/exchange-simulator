@@ -85,12 +85,12 @@ clean: CMakeFiles/exchange.dir/clean
 CMakeFiles/exchange.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/exchange.dir/build.make CMakeFiles/exchange.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/exchange.dir/build.make CMakeFiles/exchange.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/glen/Dev/exchange-simulator/build/CMakeFiles --progress-num=1,2,3,4 "Built target exchange"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/glen/Dev/exchange-simulator/build/CMakeFiles --progress-num=1,2,3,4,5 "Built target exchange"
 .PHONY : CMakeFiles/exchange.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/exchange.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/glen/Dev/exchange-simulator/build/CMakeFiles 4
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/glen/Dev/exchange-simulator/build/CMakeFiles 5
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/exchange.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Users/glen/Dev/exchange-simulator/build/CMakeFiles 0
 .PHONY : CMakeFiles/exchange.dir/rule
@@ -102,7 +102,7 @@ exchange: CMakeFiles/exchange.dir/rule
 # codegen rule for target.
 CMakeFiles/exchange.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/exchange.dir/build.make CMakeFiles/exchange.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/glen/Dev/exchange-simulator/build/CMakeFiles --progress-num=1,2,3,4 "Finished codegen for target exchange"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/glen/Dev/exchange-simulator/build/CMakeFiles --progress-num=1,2,3,4,5 "Finished codegen for target exchange"
 .PHONY : CMakeFiles/exchange.dir/codegen
 
 # clean rule for target.

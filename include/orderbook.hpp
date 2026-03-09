@@ -9,6 +9,7 @@
 
 
 class OrderBook {
+    friend class MatchingEngine;
 
     public:
         std::optional<double> best_bid() const;

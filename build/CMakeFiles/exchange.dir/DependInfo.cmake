@@ -9,6 +9,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/glen/Dev/exchange-simulator/src/main.cpp" "CMakeFiles/exchange.dir/src/main.cpp.o" "gcc" "CMakeFiles/exchange.dir/src/main.cpp.o.d"
+  "/Users/glen/Dev/exchange-simulator/src/matching_engine.cpp" "CMakeFiles/exchange.dir/src/matching_engine.cpp.o" "gcc" "CMakeFiles/exchange.dir/src/matching_engine.cpp.o.d"
   "/Users/glen/Dev/exchange-simulator/src/order_simulator.cpp" "CMakeFiles/exchange.dir/src/order_simulator.cpp.o" "gcc" "CMakeFiles/exchange.dir/src/order_simulator.cpp.o.d"
   "/Users/glen/Dev/exchange-simulator/src/orderbook.cpp" "CMakeFiles/exchange.dir/src/orderbook.cpp.o" "gcc" "CMakeFiles/exchange.dir/src/orderbook.cpp.o.d"
   )

@@ -153,6 +153,30 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/exchange.dir/build.make CMakeFiles/exchange.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/matching_engine.o: src/matching_engine.cpp.o
+.PHONY : src/matching_engine.o
+
+# target to build an object file
+src/matching_engine.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/exchange.dir/build.make CMakeFiles/exchange.dir/src/matching_engine.cpp.o
+.PHONY : src/matching_engine.cpp.o
+
+src/matching_engine.i: src/matching_engine.cpp.i
+.PHONY : src/matching_engine.i
+
+# target to preprocess a source file
+src/matching_engine.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/exchange.dir/build.make CMakeFiles/exchange.dir/src/matching_engine.cpp.i
+.PHONY : src/matching_engine.cpp.i
+
+src/matching_engine.s: src/matching_engine.cpp.s
+.PHONY : src/matching_engine.s
+
+# target to generate assembly for a file
+src/matching_engine.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/exchange.dir/build.make CMakeFiles/exchange.dir/src/matching_engine.cpp.s
+.PHONY : src/matching_engine.cpp.s
+
 src/order_simulator.o: src/order_simulator.cpp.o
 .PHONY : src/order_simulator.o
 
@@ -213,6 +237,9 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/matching_engine.o"
+	@echo "... src/matching_engine.i"
+	@echo "... src/matching_engine.s"
 	@echo "... src/order_simulator.o"
 	@echo "... src/order_simulator.i"
 	@echo "... src/order_simulator.s"

@@ -48,6 +48,11 @@ class Order {
         Side side() const {return side_;}
         OrderType orderType() const {return orderType_;}
 
+        void reduce_quantity(uint32_t quantity){
+            if (quantity > quantity_) throw std::invalid_argument("cannot reduce by more than current quantity");
+            else quantity_ -= quantity;
+        }
+
         void toString() const {
             std::cout << "timestamp: " << timestamp_ << std::endl;
             std::cout << "id: " << id_ << std::endl;
