@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include "message.hpp"
 
 
 class ExchangeServer{
@@ -18,8 +19,6 @@ class ExchangeServer{
 
     private:
         void handle_message(const Message& message);
-        void send_message(int fd, const Message& message);
-        bool read_exact(int fd, uint8_t* buffer, size_t n);
         int server_fd_;
         int client_fd_;
         uint16_t port_;

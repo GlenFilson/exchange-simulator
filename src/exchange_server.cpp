@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <cstring>
+#include "network_utils.hpp"
 
 ExchangeServer::ExchangeServer(uint16_t port, OrderBook& order_book, MatchingEngine& matching_engine, Serializer& serializer)
     : port_{port}
@@ -41,32 +42,9 @@ void ExchangeServer::run(){
     client_fd_ = accept(server_fd_, (sockaddr*)&client_addr, &client_len);
     if (client_fd_ == -1) throw std::runtime_error("accept failed");
     //here the program waits for a client to connect, blocking
-    uint8_t header[5];
-
     while(true){
-        //check if read_exact returns error
-        //this also runs the function, so on success will copy 5 bytes into the header buffer
-        if(!read_exact(client_fd_, header, 5)) break;
-
-        //first byte is the message type, cast the first byte to the message type
-        MessageType type = static_cast<MessageType>(header[0]);
-
-        //remaining 4 bytes are the payload length
-        uint32_t payload_length;
-        //copy into payload_length, offset of 1 the first byte wass the message type
-        //NOTE: we dont pass &header, because arrays already decay to pointers, where as other types do not
-        std::memcpy(&payload_length, header + 1, sizeof(uint32_t));
-
-        //now we know the size of the payload, we can read the payload itself
-        std::vector<uint8_t> payload(payload_length);
-        //payload.data(), returns pointer to the data segment of the vector
-        if(!read_exact(client_fd_, payload.data(), payload_length)) break;
-
-        //construct and handle the message
-        Message message{
-            .type = type,
-            .payload = payload
-        };
+        Message message;
+        if(!read_message(client_fd_, message)) break;
         handle_message(message);
 
     }
@@ -94,12 +72,6 @@ enum class MessageType : uint8_t {
             std::memcpy(&raw_id, message.payload.data(), sizeof(uint64_t));
             try {
                 Order order = serializer_.deserialize_order(message);
-                //order received, send an ACK back
-                Acknowledgement ack{
-                    .id = order.id()
-                };
-                Message ack_msg = serializer_.serialize_acknowledgement(ack);
-                send_message(client_fd_, ack_msg);
                 //send the order to the matching engine
                 std::vector<Trade> trades = matching_engine_.match(order);
                 //process any trades made, and send trade messages
@@ -107,6 +79,12 @@ enum class MessageType : uint8_t {
                     Message trade_msg = serializer_.serialize_trade(trade);
                     send_message(client_fd_, trade_msg);
                 }
+                //only ack order after any trades have been sent
+                Acknowledgement ack{
+                    .id = order.id()
+                };
+                Message ack_msg = serializer_.serialize_acknowledgement(ack);
+                send_message(client_fd_, ack_msg);
             
             }catch(const std::exception& e){
                 Rejection rejection{
@@ -150,24 +128,5 @@ enum class MessageType : uint8_t {
     }
 }
 
-void ExchangeServer::send_message(int fd, const Message& message){
-    uint8_t type = static_cast<uint8_t>(message.type);
-    //send(file descriptor, source, size, protocol)
-    send(fd, &type, 1, 0);
-    uint32_t length = message.payload.size();
-    send(fd, &length, sizeof(uint32_t), 0);
-    send(fd, message.payload.data(), length, 0);
-}
 
-bool ExchangeServer::read_exact(int fd, uint8_t* buffer, size_t n){
-    size_t total_read = 0;
-    while(total_read < n){
-        //recv can return -1, so we need signed version of size_t, ssize_t
-        ssize_t bytes_read = recv(fd, buffer + total_read, n - total_read, 0);
-        if(bytes_read < 0) return false;
-        total_read += bytes_read;
-    }
-    //if all bytes read
-    return true;
-}
 
