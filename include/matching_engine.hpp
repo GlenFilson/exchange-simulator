@@ -9,11 +9,11 @@
 
 class MatchingEngine{
 
-public:
+    public:
     MatchingEngine(OrderBook& orderBook);
     std::vector<Trade> match(const Order& order);
         
-private:
+    private:
     OrderBook& orderBook_;
 
 
