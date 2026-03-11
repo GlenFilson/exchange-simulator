@@ -14,13 +14,13 @@ bool read_exact(int fd, uint8_t* buffer, size_t n){
     //if all bytes read
     return true;
 }
-
-void send_message(int fd, const Message& message){
+//pass send_message a buffer instead of creating a new one in every call
+void send_message(int fd, const Message& message, std::vector<uint8_t>& buffer){
     uint8_t type = static_cast<uint8_t>(message.type);
     uint32_t length = message.payload.size();
     //store all in a single message, rather than sending each segment individually
     //each send triggers a syscall, so best to minimise by packing all data into 1 message
-    std::vector<uint8_t> buffer(1+sizeof(uint32_t) + length);
+    buffer.resize(1+sizeof(uint32_t) + length);
     buffer[0] = type;
     std::memcpy(buffer.data() + 1, &length, sizeof(uint32_t));
     std::memcpy(buffer.data() + 1 + sizeof(uint32_t), message.payload.data(), length);

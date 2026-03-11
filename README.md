@@ -79,14 +79,16 @@ classDiagram
 ## Wire Format
 
 ```
-┌──────────────┬────────────────┬─────────────┐
-│ Type (1 byte)│ Length (4 bytes)│ Payload (N) │
-└──────────────┴────────────────┴─────────────┘
+┌──────────────┬──────────────────┬─────────────┐
+│ Type (1 byte)│ Length (4 bytes) │ Payload (N) │
+└──────────────┴──────────────────┴─────────────┘
 ```
 
-<!-- ## Performance -->
+## Performance
+## Optimizations
 
-<!-- Before/after numbers, Nagle's algorithm story, profiling results -->
+1. [TCP_NODELAY + Single Send Buffer](docs/improvements/nagles_algorithm.md) — 12 → 46K orders/sec (~3800x)
+2. [Pre-allocated Buffers](docs/improvements/preallocated-buffers.md) — in progress
 
 <!-- ## Design Decisions -->
 

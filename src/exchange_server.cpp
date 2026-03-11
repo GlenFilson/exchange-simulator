@@ -20,6 +20,9 @@ ExchangeServer::ExchangeServer(uint16_t port, OrderBook& order_book, MatchingEng
 void ExchangeServer::start(){
     //SOCK_STREAM is TCP
     server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
+    int opt = 1;
+    //lets the port be used without waiting 60 seconds between usages
+    setsockopt(server_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     if(server_fd_ == -1) throw std::runtime_error("socket creation failed");
     sockaddr_in address{};
     address.sin_family = AF_INET;
@@ -46,11 +49,10 @@ void ExchangeServer::run(){
     int flag = 1;
     setsockopt(client_fd_, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
     //here the program waits for a client to connect, blocking
+    Message message;//move the message outside the loop, dont create a new message on every loop
     while(true){
-        Message message;
         if(!read_message(client_fd_, message)) break;
         handle_message(message);
-
     }
     close(client_fd_);
 }
@@ -64,7 +66,7 @@ enum class MessageType : uint8_t {
     REJECT = 4,
     TRADE = 5
 };
-*/
+*/  
     switch(message.type){
         case MessageType::NEW_ORDER: {
             //get the id outside the try, so we have it in scope in the catch
@@ -78,14 +80,14 @@ enum class MessageType : uint8_t {
                 //process any trades made, and send trade messages
                 for (const Trade& trade : trades){
                     Message trade_msg = serializer_.serialize_trade(trade);
-                    send_message(client_fd_, trade_msg);
+                    send_message(client_fd_, trade_msg, msg_buffer_);
                 }
                 //only ack order after any trades have been sent
                 Acknowledgement ack{
                     .id = order.id()
                 };
                 Message ack_msg = serializer_.serialize_acknowledgement(ack);
-                send_message(client_fd_, ack_msg);
+                send_message(client_fd_, ack_msg, msg_buffer_);
             
             }catch(const std::exception& e){
                 Rejection rejection{
@@ -93,7 +95,7 @@ enum class MessageType : uint8_t {
                     .reason = std::string(e.what())
                 };
                 Message rejection_msg = serializer_.serialize_rejection(rejection);
-                send_message(client_fd_, rejection_msg);
+                send_message(client_fd_, rejection_msg, msg_buffer_);
                 break;
             }
             
@@ -110,7 +112,7 @@ enum class MessageType : uint8_t {
                 };
                 Message cancel_ack_msg = serializer_.serialize_cancel_ack(cancel_ack);
                 order_book_.cancel_order(id);
-                send_message(client_fd_, cancel_ack_msg);
+                send_message(client_fd_, cancel_ack_msg, msg_buffer_);
 
             }catch(const std::exception& e){
                 Rejection rejection{
@@ -118,7 +120,7 @@ enum class MessageType : uint8_t {
                     .reason = std::string(e.what())
                 };
                 Message rejection_msg = serializer_.serialize_rejection(rejection);
-                send_message(client_fd_, rejection_msg);
+                send_message(client_fd_, rejection_msg, msg_buffer_);
                 break;
             }
             break;
