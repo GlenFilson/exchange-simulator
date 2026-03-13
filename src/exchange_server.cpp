@@ -8,7 +8,9 @@
 #include <cstring>
 #include "network_utils.hpp"
 #include <netinet/tcp.h>
-
+#include <fcntl.h>
+#include <cerrno>
+#include <arpa/inet.h>
 ExchangeServer::ExchangeServer(uint16_t port, OrderBook& order_book, MatchingEngine& matching_engine, Serializer& serializer)
     : port_{port}
     , order_book_{order_book}
@@ -33,31 +35,229 @@ void ExchangeServer::start(){
     int bind_result = bind(server_fd_, (sockaddr*)&address, sizeof(address));
     if(bind_result == -1) throw std::runtime_error("bind failed");
     
-    //5 = backlog, how many pending connections to queue
+    //5: backlog, how many pending connections are allowed to queue
     int listen_result = listen(server_fd_, 5);
     if(listen_result == -1) throw std::runtime_error("listen failed");
+
+    int flags = fcntl(server_fd_, F_GETFL, 0); //get the current flags
+    //add nonblocking socket to existing flags
+    if (fcntl(server_fd_, F_SETFL, flags | O_NONBLOCK) == -1) throw std::runtime_error("failed to set socket to non blocking"); 
+    epoll_fd_ = epoll_create1(0);
+    if(epoll_fd_ == -1) throw std::runtime_error("epoll creation failed");
+    //create an e poll event and populate its fields
+    epoll_event ev{};
+    ev.events = EPOLLIN; //the associated file is available for read operations
+    /*
+    data is simply what we want to be returned when the listend fd has an event
+    this can be anything of:
+    typedef union epoll_data {
+        void *ptr;
+        int fd;
+        uint32_t u32;
+        uint64_t u64;
+    } epoll_data_t;
+    meaning, we could create our own struct for metadata that we want returned on events
+    then we simply store as data, a ptr to the struct. e.g.:
+    struct Connection {
+        int fd;
+        Buffer buffer;
+    };
+    Connection* conn = new Connection{client_fd};
+    ev.events = EPOLLIN;
+    ev.data.ptr = conn;
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &ev);
+    */
+    ev.data.fd = server_fd_;//what we want epoll to return on an event, we want the server_fd_ so we quickly know this is an event on server_fd_, we need to accept new connection
+    //epoll_fd_: the epoll instance, EPOLL_CTL_ADD: add an entry of interest to the epoll instance
+    if(epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, server_fd_, &ev) == -1) throw std::runtime_error("failed to register server with epoll");
+
     int flag = 1;
     setsockopt(server_fd_, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
 }
 
 void ExchangeServer::run(){
-
-    sockaddr_in client_addr{};
-    socklen_t client_len = sizeof(client_addr);
-    client_fd_ = accept(server_fd_, (sockaddr*)&client_addr, &client_len);
-    if (client_fd_ == -1) throw std::runtime_error("accept failed");
-    int flag = 1;
-    setsockopt(client_fd_, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
-    //here the program waits for a client to connect, blocking
-    Message message;//move the message outside the loop, dont create a new message on every loop
+    epoll_event events[64]; //buffer for ready events (may need to alter size)
     while(true){
-        if(!read_message(client_fd_, message)) break;
-        handle_message(message);
+        //n: number of events occured + written, events: where to write about any fds ready for reading, 64: number of events we can write to, -1: wait infinitely
+        int n = epoll_wait(epoll_fd_, events, 64, -1);
+        for (int i = 0; i < n; i++){
+            int fd = events[i].data.fd;//here we reaccess the data that we wanted returned on an event, that is the file descriptor
+            if(fd == server_fd_){
+                //any server event is a client trying to connect
+                accept_client();
+            }else{
+                if(events[i].events & EPOLLIN){//bitwise and, check if the EPOLLIN flag is set in events (which is a bitfield of flags)
+                //if the fd is readable, read it
+                handle_read(fd);
+                }
+                if(events[i].events & EPOLLOUT){
+                    //if the fd is writaable, write to it 
+                    handle_write(fd);
+                }
+            }
+        } 
+    } 
+}
+void ExchangeServer::accept_client(){
+    //instead of just accepting one client per call, loop through all clients in the queue and accept them all
+    //this can optimise performance as we dont accept one client, go back to main loop, accept another client, etc.
+    //we reduce the repeated epoll wakeups / events for events of the same socket (clients on server_fd_)
+    while(true){
+        sockaddr_in client_addr{};
+        socklen_t client_len = sizeof(client_addr);
+        int client_fd = accept(server_fd_, (sockaddr*)&client_addr, &client_len);
+        if(client_fd == -1){
+            //non-blocking accept can return EAGAIN when there are no connections left in the accept queue
+            if(errno == EAGAIN || errno == EWOULDBLOCK) break;
+            //if its an error that is not these cases, not acceptable, throw exception
+            throw std::runtime_error("accept failed");
+        }
+
+        //need to set every client server to be non blocking
+        int flags = fcntl(client_fd, F_GETFL, 0);
+        if (fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) == -1) throw std::runtime_error("failed to set socket to non blocking"); 
+        
+        epoll_event ev{};
+        ev.events = EPOLLIN;
+        //NOTE: consider instead of registering fd, registering a ptr to the entry in the clients_ map
+        //then we dont have to get client_fd, then lookup the client state in map, we could have direct access
+        ev.data.fd = client_fd;
+        if(epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, client_fd, &ev) == -1) throw std::runtime_error("failed to register client with epoll");
+    
+        int flag = 1;
+        setsockopt(client_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+        clients_[client_fd] = ClientState{};//map the client fd to default constructed ClientState
     }
-    close(client_fd_);
 }
 
-void ExchangeServer::handle_message(const Message& message){
+void ExchangeServer::handle_read(int fd){
+    auto it = clients_.find(fd);
+    //if client does not exist in our map
+    if(it == clients_.end()) return;
+    ClientState& client = it->second;
+
+    if(client.read_phase == ReadPhase::HEADER){
+        //read into header_buffer offset by the number of bytes we have already read
+        //we want to read another 5-bytes_read, basically read until we have read 5 bytes, filled the buffer
+        ssize_t n = recv(fd, client.header_buffer + client.bytes_read, 5-client.bytes_read, MSG_DONTWAIT);//non-blocking recv
+        if(n > 0){
+            client.bytes_read += n;
+        }else if(n == 0){//connection closed
+            disconnect_client(fd);
+            return;
+        }else if(n == -1){
+            //acceptable errors, just exit
+            if(errno == EAGAIN || errno == EWOULDBLOCK) return;
+            disconnect_client(fd);
+            return;
+            // throw std::runtime_error("error receiving client header");
+        }
+        //if we have not yet filled the buffer, return
+        if(client.bytes_read < 5){
+            return;
+        }
+        //if we have exactly filled the buffer (5 bytes), move on to payload reading phase
+        //first byte in buffer is the MessageType
+        client.message_type = static_cast<MessageType>(client.header_buffer[0]);
+        //the payload length is the next 4 bytes, (1-5)
+        std::memcpy(&client.payload_length, client.header_buffer+1, sizeof(uint32_t));
+        //convert from network to host byte order
+        client.payload_length = ntohl(client.payload_length);
+        //now we know how big the payload is, resize the buffer ready to accept it
+        client.read_buffer.resize(client.payload_length);
+        client.bytes_read = 0;//reset bytes_read for reading payload
+        //we are set up to enter payload reading phase, switch read_phase
+        if(client.payload_length != 0){
+            client.read_phase = ReadPhase::PAYLOAD;
+        }else{
+            //handle the case where the payload length is 0, a client is sending keep-alive pings
+            //we dont want to disconnect them, so just reset their state and ignore
+            client.read_phase = ReadPhase::HEADER;
+        }
+        
+    }
+    
+    if(client.read_phase == ReadPhase::PAYLOAD){
+        //write data into the data section of the read_buffer vector
+        ssize_t n = recv(fd, client.read_buffer.data() + client.bytes_read, client.payload_length-client.bytes_read, MSG_DONTWAIT);
+        if(n > 0){
+            client.bytes_read += n;
+        }else if(n == 0){//connection closed
+            disconnect_client(fd);
+            return;
+        }else if(n == -1){
+            //acceptable errors, just exit
+            if(errno == EAGAIN || errno == EWOULDBLOCK) return;
+            disconnect_client(fd);
+            return;
+            // throw std::runtime_error("error receiving client payload");
+        }
+        //if we have not yet filled the buffer, return
+        if(client.bytes_read < client.payload_length){
+            return;
+        }
+        //if we have read the entire payload, construct and handle the message
+        Message message{
+            .type = client.message_type,
+            .payload = client.read_buffer
+        };
+        handle_message(fd, message);
+        //now we are done with this message, reset clients state ready to read a new message
+        client.read_phase = ReadPhase::HEADER;
+        client.bytes_read = 0;
+    }
+
+}
+
+void ExchangeServer::handle_write(int fd){
+    auto it = clients_.find(fd);
+    if (it == clients_.end()) return;
+    ClientState& client = it->second;
+
+    ssize_t n = send(fd, client.write_buffer.data() + client.bytes_sent, client.write_buffer.size() - client.bytes_sent, MSG_DONTWAIT);
+    if(n > 0){
+        client.bytes_sent += n;
+    }else if(n == 0){
+        disconnect_client(fd);
+        return;
+    }else if(n == -1){
+        //try again later errors, client is still alive
+        if(errno == EAGAIN || errno == EWOULDBLOCK) return;
+        //if a client is having other errors, we cant stop our server, simply disconnect them
+        disconnect_client(fd);
+        return;
+    }
+    //not finished writing to the buffer yet
+    if(client.bytes_sent < client.write_buffer.size()){
+        return;
+    }
+    //reset state ready to write next message
+    client.write_buffer.clear();
+    client.bytes_sent = 0;
+    //no longer listen for write on this fd
+    set_epoll_write(fd, false);
+
+}
+
+void ExchangeServer::set_epoll_write(int fd, bool enable){
+    epoll_event ev{};
+    //if enable is true, listen for in and out, else listen for in only
+    ev.events = EPOLLIN | (enable ? EPOLLOUT : 0);
+    ev.data.fd = fd;
+    epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, fd, &ev);
+}
+
+
+
+void ExchangeServer::disconnect_client(int fd){
+    //deregister the fd from epoll, no longer receive events about this fd
+    epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, fd, nullptr);
+    close(fd);
+    //remove the client from our mapping of client fd to ClientState
+    clients_.erase(fd);
+}
+
+void ExchangeServer::handle_message(int client_fd, const Message& message){
 /*
 enum class MessageType : uint8_t {
     NEW_ORDER = 1,
@@ -67,6 +267,8 @@ enum class MessageType : uint8_t {
     TRADE = 5
 };
 */  
+    ClientState& client = clients_[client_fd];
+
     switch(message.type){
         case MessageType::NEW_ORDER: {
             //get the id outside the try, so we have it in scope in the catch
@@ -79,26 +281,22 @@ enum class MessageType : uint8_t {
                 std::vector<Trade> trades = matching_engine_.match(order);
                 //process any trades made, and send trade messages
                 for (const Trade& trade : trades){
-                    Message trade_msg = serializer_.serialize_trade(trade);
-                    send_message(client_fd_, trade_msg, msg_buffer_);
+                    serializer_.serialize_trade(trade, client.write_buffer);
                 }
                 //only ack order after any trades have been sent
                 Acknowledgement ack{
                     .id = order.id()
                 };
-                Message ack_msg = serializer_.serialize_acknowledgement(ack);
-                send_message(client_fd_, ack_msg, msg_buffer_);
-            
+                serializer_.serialize_acknowledgement(ack, client.write_buffer);
             }catch(const std::exception& e){
                 Rejection rejection{
                     .id = raw_id,
                     .reason = std::string(e.what())
                 };
-                Message rejection_msg = serializer_.serialize_rejection(rejection);
-                send_message(client_fd_, rejection_msg, msg_buffer_);
+                serializer_.serialize_rejection(rejection, client.write_buffer);
                 break;
             }
-            
+
             break;
         }
         case MessageType::CANCEL_ORDER: {
@@ -110,17 +308,14 @@ enum class MessageType : uint8_t {
                 Acknowledgement cancel_ack{
                     .id = id
                 };
-                Message cancel_ack_msg = serializer_.serialize_cancel_ack(cancel_ack);
+                serializer_.serialize_cancel_ack(cancel_ack, client.write_buffer);
                 order_book_.cancel_order(id);
-                send_message(client_fd_, cancel_ack_msg, msg_buffer_);
-
             }catch(const std::exception& e){
                 Rejection rejection{
                     .id = raw_id,
                     .reason = std::string(e.what())
                 };
-                Message rejection_msg = serializer_.serialize_rejection(rejection);
-                send_message(client_fd_, rejection_msg, msg_buffer_);
+                serializer_.serialize_rejection(rejection, client.write_buffer);
                 break;
             }
             break;
@@ -129,6 +324,8 @@ enum class MessageType : uint8_t {
             throw std::runtime_error("unknown message type");
             break;
     }
+    //tell epoll to wake us up so we can send the buffer
+    set_epoll_write(client_fd, true);
 }
 
 
