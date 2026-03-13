@@ -84,11 +84,10 @@ classDiagram
 └──────────────┴──────────────────┴─────────────┘
 ```
 
-## Performance
+<!-- ## Performance -->
 ## Optimizations
-
-1. [TCP_NODELAY + Single Send Buffer](docs/improvements/nagles_algorithm.md) — 12 → 46K orders/sec (~3800x)
-2. [Pre-allocated Buffers](docs/improvements/preallocated-buffers.md) — in progress
+1. [TCP_NODELAY + Single Send Buffer](docs/improvements/nagles_algorithm.md) - 12 -> 46K orders/sec (3,800x)
+2. [Pre-allocated Buffers](docs/improvements/pre_allocated_buffers.md) - 46K -> 50K orders/sec, 83% instruction reduction
 
 <!-- ## Design Decisions -->
 
@@ -114,6 +113,4 @@ cmake --build .
 - Multicast UDP market data
 - Shared memory ring buffers
 - JSON serializer
-- Pre-allocated buffers
-- Unit testing
 - Unit testing

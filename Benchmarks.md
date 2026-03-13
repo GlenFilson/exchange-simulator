@@ -7,21 +7,22 @@ All benchmarks: 1M orders, localhost, printing disabled, Release mode.
 ## Results
 
 
-### 2026-03-09 — TCP_NODELAY + single send()
+### 2026-03-09 — TCP_NODELAY + single send() (Release)
 
 | Metric | Server | Client |
 |--------|--------|--------|
-| CPU utilization | 0.591 | 0.573 |
-| User time | 1.357s | 1.269s |
-| Sys time | 8.589s | 8.226s |
-| Instructions | 10298410592 | 6652817977 |
-| Cycles | 7585726006 | 5550182514 |
-| IPC | 1.354 | 1.198 |
-| Branch miss rate | 1.150% | 1.752% |
-| Frontend idle | 46.878% | 42.714% |
-| Page faults | 122 | 129 |
+| CPU utilization | 0.590 | 0.573 |
+| User time | 1.393s | 1.240s |
+| Sys time | 8.482s | 8.170s |
+| Instructions | 10297480589 | 6652682220 |
+| Cycles | 7598847253 | 5451523931 |
+| IPC | 1.356 | 1.220 |
+| Branch miss rate | 1.070% | 1.744% |
+| Frontend idle | 45.980% | 42.576% |
+| Page faults | 123 | 129 |
 
-**Throughput: 46152.800 orders/sec | Elapsed: 21.669s | Runs: 5**
+**Throughput: 46728.200 orders/sec | Elapsed: 21.403s | Runs: 5**
+
 
 ### 2026-03-11 — Pre-allocated buffers, reused Message
 

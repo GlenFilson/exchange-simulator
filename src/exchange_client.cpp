@@ -37,12 +37,13 @@ void ExchangeClient::run(){
     int NUM_ORDERS = 1000000;
     auto start = std::chrono::high_resolution_clock::now();
     Message response;
-    Message order_msg;
     for (int i = 0; i < NUM_ORDERS; i++){
+        if(i % 10000 == 0) std::cout << "order: " << i << " sent\n";
         Order order = order_simulator_.generate_order();
+        msg_buffer_.clear();
         // order.toString();
-        Message order_msg = serializer_.serialize_order(order);
-        send_message(socket_fd_, order_msg, msg_buffer_);
+        serializer_.serialize_order(order, msg_buffer_);
+        send(socket_fd_, msg_buffer_.data(), msg_buffer_.size(), 0);
         while(true){
             if(!read_message(socket_fd_, response)) break;
             if(response.type == MessageType::ORDER_ACK){
