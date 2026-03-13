@@ -12,12 +12,12 @@ plain enum can be dangerous as other enums with same name may collide
 using enum class we access the enums using class:enum, so Side::BID
 which is safer 
 */
-enum class Side {
+enum class Side : uint8_t {
     BID,
     ASK
 };
 
-enum class OrderType {
+enum class OrderType : uint8_t{
     LIMIT,
     MARKET
 };

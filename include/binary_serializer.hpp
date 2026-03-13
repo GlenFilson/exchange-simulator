@@ -10,22 +10,22 @@
 class BinarySerializer : public Serializer {
 
     public:
-        Message serialize_order(const Order& order) override;
+        void serialize_order(const Order& order, std::vector<uint8_t>& buffer) override;
         Order deserialize_order(const Message& message) override;
 
-        Message serialize_cancel(uint64_t id) override;
+        void serialize_cancel(uint64_t id, std::vector<uint8_t>& buffer) override;
         uint64_t deserialize_cancel(const Message& message)override;
 
-        Message serialize_acknowledgement(const Acknowledgement& acknowledgement) override;
+        void serialize_acknowledgement(const Acknowledgement& acknowledgement, std::vector<uint8_t>& buffer) override;
         Acknowledgement deserialize_acknowledgement(const Message& message) override;
 
-        Message serialize_rejection(const Rejection& rejection) override;
+        void serialize_rejection(const Rejection& rejection, std::vector<uint8_t>& buffer) override;
         Rejection deserialize_rejection(const Message& message) override;
 
-        Message serialize_trade(const Trade& trade) override;
+        void serialize_trade(const Trade& trade, std::vector<uint8_t>& buffer) override;
         Trade deserialize_trade(const Message& message) override;
 
-        Message serialize_cancel_ack(const Acknowledgement& acknowledgement) override;
+        void serialize_cancel_ack(const Acknowledgement& acknowledgement, std::vector<uint8_t>& buffer) override;
         Acknowledgement deserialize_cancel_ack(const Message& message) override;
 
 
