@@ -3,13 +3,13 @@
 #include <chrono>
 
 
-OrderSimulator::OrderSimulator(double cp)
+OrderSimulator::OrderSimulator(double cp, uint64_t starting_id)
 	/*
 	initialiser list instead of explicit member assignment
 	member assignment initialises members with a default value, then reassigns it
 	initialiser list initialises members with the correct value instantly
 	*/
-	: id_counter_(1), center_price_(cp), rng_(std::random_device{}())
+	: id_counter_(starting_id), center_price_(cp), rng_(std::random_device{}())
 {
 
 }

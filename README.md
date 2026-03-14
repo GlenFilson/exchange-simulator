@@ -1,19 +1,19 @@
 # Exchange Simulator
 
-Simulated exchange built from scratch in C++. Order book, matching engine, binary serialization, TCP networking.
+High-performance simulated exchange built from scratch in C++. Order book, matching engine, binary serialization, TCP networking.
 
 ## Architecture
 
 ```mermaid
 graph LR
-    Client[Client] -->|TCP| Server[Exchange Server]
-    Server --> Serializer[Binary Serializer]
+    Clients[Concurrent Clients] -->|TCP Non-blocking|Server[Exchange Server]
+    Server -->|epoll multiplexing| Serializer[Binary Serializer]
     Serializer --> Handler[Message Handler]
     Handler --> ME[Matching Engine]
     Handler --> OB[Order Book]
     ME --> OB
-    Handler -->|ACK / Trade / Reject| Serializer
-    Serializer -->|TCP| Client
+    Handler -->|Route Trade / Auth| Server
+    Server -->|TCP| Clients
 ```
 
 ## Components
@@ -34,6 +34,12 @@ classDiagram
         -OrderBook& order_book_
         +match(const Order&) vector~Trade~
     }
+    class ClientState {
+        +ReadPhase read_phase
+        +uint32_t payload_length
+        +vector~uint8_t~ read_buffer
+        +vector~uint8_t~ write_buffer
+    }
     class Serializer {
         <<abstract>>
         +serialize_order()*
@@ -48,11 +54,15 @@ classDiagram
         +deserialize_trade()
     }
     class ExchangeServer {
+        -int epoll_fd_
+        -unordered_map clients_
         -OrderBook& order_book_
         -MatchingEngine& engine_
         -Serializer& serializer_
         +start()
         +run()
+        +handle_read(int)
+        +handle_write(int)
     }
     class ExchangeClient {
         -Serializer& serializer_
@@ -60,6 +70,8 @@ classDiagram
         +connect()
         +run()
     }
+    
+    ExchangeServer *-- ClientState : Manages
     MatchingEngine --> OrderBook : friend access
     Serializer <|-- BinarySerializer
     ExchangeServer --> MatchingEngine
@@ -86,8 +98,9 @@ classDiagram
 
 <!-- ## Performance -->
 ## Optimizations
-1. [TCP_NODELAY + Single Send Buffer](docs/improvements/nagles_algorithm.md) - 12 -> 46K orders/sec (3,800x)
-2. [Pre-allocated Buffers](docs/improvements/pre_allocated_buffers.md) - 46K -> 50K orders/sec, 83% instruction reduction
+1. [TCP_NODELAY + Single Send Buffer](docs/improvements/nagles_algorithm.md) - 12 ops/sec -> 46K ops/sec (3,800x increase)
+2. [Pre-allocated Buffers & Zero-Allocation Path](docs/improvements/pre_allocated_buffers.md) - 46K -> 50K ops/sec, 83% instruction reduction
+3. [Non-blocking I/O & Epoll Multiplexing](docs/improvements/epoll_concurrency.md) - Unlocked horizontal scaling, 134K+ combined ops/sec
 
 <!-- ## Design Decisions -->
 
@@ -104,7 +117,7 @@ cmake --build .
 ./exchange
 
 # Terminal 2
-./client
+./client N #number of concurrent clients(optional, default=1)
 ```
 
 ## Future Work

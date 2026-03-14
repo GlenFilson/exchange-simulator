@@ -8,15 +8,14 @@
 
 
 
-// Create a thread-safe atomic counter so each thread gets totally unique order IDs
 std::atomic<uint64_t> global_order_id{1};
 
 void run_client_thread(int thread_id) {
     try {
-        // Every thread creates its OWN completely separate simulator and serializer!
         BinarySerializer serializer;
-        // Assuming OrderSimulator takes a starting ID, or just let them overlap if your exchange doesn't care
-        OrderSimulator simulator(1000); 
+        //offset each clients order ids, so we dont have clashing orders
+        uint64_t starting_id = (thread_id + 1) *100000000ULL;
+        OrderSimulator simulator(1000, starting_id); 
 
         ExchangeClient client("127.0.0.1", 8080, serializer, simulator);
         client.connect();
@@ -30,9 +29,14 @@ void run_client_thread(int thread_id) {
     }
 }
 
-int main() {
-    int num_threads = 4;
-    std::vector<std::thread> threads;
+int main(int argc, char** argv) {
+    int num_threads;
+    if(argc < 2){
+        num_threads = 1;
+    }else{
+        num_threads = std::stoi(argv[1]);
+    }
+     std::vector<std::thread> threads;
 
     std::cout << "Starting " << num_threads << " client threads...\n";
 

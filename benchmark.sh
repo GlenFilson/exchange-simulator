@@ -1,14 +1,15 @@
 #!/bin/bash
 # benchmark.sh — run from the build/ directory
-# Usage: ./benchmark.sh [num_runs] [label]
-# Example: ./benchmark.sh 5 "TCP_NODELAY + single send(), 1M orders"
+# Usage: ./benchmark.sh [num_runs] [num_clients] [label] 
+# Example: ./benchmark.sh 5 4 "TCP_NODELAY + multiple clients"
 # Requires: perf, bc
 
 RUNS=${1:-5}
-LABEL=${2:-"unlabelled"}
+NUM_CLIENTS=${2:-1}
+LABEL=${3:-"unlabelled"}
 DATE=$(date +%Y-%m-%d)
 
-echo "=== Benchmark: $RUNS iterations ==="
+echo "=== Benchmark: $RUNS iterations, $NUM_CLIENTS client threads ==="
 echo ""
 
 # Accumulator arrays
@@ -25,16 +26,22 @@ for ((i=1; i<=RUNS; i++)); do
     sleep 0.5
 
     # Run client under perf stat, capture stdout for throughput
-    perf stat -o /tmp/bench_client.txt ./client > /tmp/bench_client_out.txt 2>&1
+    perf stat -o /tmp/bench_client.txt ./client $NUM_CLIENTS > /tmp/bench_client_out.txt 2>&1
 
-    # Kill server
-    kill $SERVER_PID 2>/dev/null
+      # 1. Kill the actual server application first
+    # This forces 'perf stat' to detect its child has died, causing it to cleanly wrap up and write the file.
+    killall -9 exchange 2>/dev/null
+    
+    # 2. Now wait for perf to finish writing its output and exit
     wait $SERVER_PID 2>/dev/null
+    
+    # 3. Give the OS a moment to completely free the TCP socket
+    sleep 1  
 
-    # Extract throughput
-    tput=$(grep "orders/sec" /tmp/bench_client_out.txt | grep -oP '^\d+' || echo "0")
+    # Extract throughput (sums across all client threads)
+    tput=$(grep "orders/sec" /tmp/bench_client_out.txt | awk '{sum+=$1} END {print sum+0}')
     throughput_arr+=($tput)
-    echo "  -> $tput orders/sec"
+    echo "  -> $tput combined orders/sec"
 
     # Parse client perf stat
     c_cpu_arr+=($(grep "CPUs utilized" /tmp/bench_client.txt | grep -oP '[\d.]+(?=\s+CPUs)' || echo "0"))
@@ -60,13 +67,14 @@ for ((i=1; i<=RUNS; i++)); do
     s_pagefaults_arr+=($(grep "page-faults" /tmp/bench_server.txt | awk '{print $1}' | tr -d ',' || echo "0"))
 done
 
-# Averaging functions
+# Averaging functions with fallback to prevent division by zero
 avg() {
     local arr=("$@")
     local count=${#arr[@]}
+    if [[ $count -eq 0 ]]; then printf "0.000"; return; fi
     local sum=0
     for val in "${arr[@]}"; do
-        sum=$(echo "$sum + $val" | bc -l)
+        sum=$(echo "$sum + ${val:-0}" | bc -l)
     done
     printf "%.3f" $(echo "$sum / $count" | bc -l)
 }
@@ -74,9 +82,10 @@ avg() {
 avg_int() {
     local arr=("$@")
     local count=${#arr[@]}
+    if [[ $count -eq 0 ]]; then printf "0"; return; fi
     local sum=0
     for val in "${arr[@]}"; do
-        sum=$(echo "$sum + $val" | bc -l)
+        sum=$(echo "$sum + ${val:-0}" | bc -l)
     done
     printf "%.0f" $(echo "$sum / $count" | bc -l)
 }
@@ -107,7 +116,7 @@ echo "| Branch miss rate | $(avg "${s_branch_arr[@]}")% | $(avg "${c_branch_arr[
 echo "| Frontend idle | $(avg "${s_frontend_arr[@]}")% | $(avg "${c_frontend_arr[@]}")% |"
 echo "| Page faults | $(avg_int "${s_pagefaults_arr[@]}") | $(avg_int "${c_pagefaults_arr[@]}") |"
 echo ""
-echo "**Throughput: $(avg "${throughput_arr[@]}") orders/sec | Elapsed: $(avg "${elapsed_arr[@]}")s | Runs: $RUNS**"
+echo "**Throughput: $(avg "${throughput_arr[@]}") orders/sec | Elapsed: $(avg "${elapsed_arr[@]}")s | Runs: $RUNS | Clients: $NUM_CLIENTS**"
 
 # Cleanup
 rm -f /tmp/bench_server.txt /tmp/bench_client.txt /tmp/bench_client_out.txt

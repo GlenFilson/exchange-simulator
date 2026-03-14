@@ -199,14 +199,13 @@ void ExchangeServer::handle_read(int fd){
         //if we have read the entire payload, construct and handle the message
         Message message{
             .type = client.message_type,
-            .payload = client.read_buffer
+            .payload = client.read_buffer//NOTE: currently deep copying, look into improving this
         };
         handle_message(fd, message);
         //now we are done with this message, reset clients state ready to read a new message
         client.read_phase = ReadPhase::HEADER;
         client.bytes_read = 0;
     }
-
 }
 
 void ExchangeServer::handle_write(int fd){
@@ -279,9 +278,18 @@ enum class MessageType : uint8_t {
                 Order order = serializer_.deserialize_order(message);
                 //send the order to the matching engine
                 std::vector<Trade> trades = matching_engine_.match(order);
+                //add the order id to client file descriptor mapping
+                order_to_client_fd_[order.id()] = client_fd;
                 //process any trades made, and send trade messages
                 for (const Trade& trade : trades){
+                    //notifies the taker that a trade was made
                     serializer_.serialize_trade(trade, client.write_buffer);
+
+                    //need to also notify the maker, the counterparty of the trade
+                    int counterparty_fd = order_to_client_fd_[order.side() == Side::ASK ? trade.buyer_order_id : trade.seller_order_id];
+                    ClientState& counterparty = clients_[counterparty_fd];
+                    serializer_.serialize_trade(trade, counterparty.write_buffer);
+                    set_epoll_write(counterparty_fd, true);
                 }
                 //only ack order after any trades have been sent
                 Acknowledgement ack{
@@ -310,6 +318,7 @@ enum class MessageType : uint8_t {
                 };
                 serializer_.serialize_cancel_ack(cancel_ack, client.write_buffer);
                 order_book_.cancel_order(id);
+                order_to_client_fd_.erase(id);
             }catch(const std::exception& e){
                 Rejection rejection{
                     .id = raw_id,

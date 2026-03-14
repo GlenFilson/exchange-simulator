@@ -7,7 +7,7 @@
 
 class OrderSimulator{
 	public:
-		OrderSimulator(double cp);			
+		OrderSimulator(double cp, uint64_t starting_id = 1);			
 		Order generate_order();
 		std::vector<Order> generate_n_orders(int n);
 

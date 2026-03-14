@@ -38,7 +38,7 @@ void ExchangeClient::run(){
     auto start = std::chrono::high_resolution_clock::now();
     Message response;
     for (int i = 0; i < NUM_ORDERS; i++){
-        if(i % 10000 == 0) std::cout << "order: " << i << " sent\n";
+        // if(i % 100000 == 0) std::cout << "order: " << i << " sent\n";
         Order order = order_simulator_.generate_order();
         msg_buffer_.clear();
         // order.toString();
