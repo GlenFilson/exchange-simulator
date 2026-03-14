@@ -71,3 +71,69 @@ All benchmarks: 1M orders, localhost, printing disabled, Release mode.
 | Page faults | 42464 | 157 |
 
 **Throughput: 134735.600 orders/sec | Elapsed: 37.136s | Runs: 5 | Clients: 5**
+
+
+### 2026-03-14 — try_send + flat array, 1 client
+
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 0.491 | 0.554 |
+| User time | 0.681s | 0.902s |
+| Sys time | 7.300s | 8.001s |
+| Instructions | 1792983692 | 1114016377 |
+| Cycles | 1954223384 | 1730075394 |
+| IPC | 0.918 | 0.644 |
+| Branch miss rate | 4.230% | 8.088% |
+| Frontend idle | 60.076% | 64.792% |
+| Page faults | 10030 | 135 |
+
+**Throughput: 50686.800 orders/sec | Elapsed: 19.731s | Runs: 5 | Clients: 1**
+
+### 2026-03-14 — try_send + flat array, 5 clients
+
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 0.986 | 1.732 |
+| User time | 3.518s | 4.958s |
+| Sys time | 21.180s | 50.321s |
+| Instructions | 9019057953 | 5595230311 |
+| Cycles | 10429642058 | 9427010472 |
+| IPC | 0.864 | 0.592 |
+| Branch miss rate | 4.366% | 8.294% |
+| Frontend idle | 44.612% | 65.102% |
+| Page faults | 42386 | 155 |
+
+**Throughput: 127900.800 orders/sec | Elapsed: 39.239s | Runs: 5 | Clients: 5**
+
+### 2026-03-14 — try_send + flat array + write batching, 1 client
+
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 0.490 | 0.554 |
+| User time | 0.676s | 0.911s |
+| Sys time | 7.320s | 8.027s |
+| Instructions | 1789903496 | 1113659165 |
+| Cycles | 1841972848 | 1731952203 |
+| IPC | 0.970 | 0.642 |
+| Branch miss rate | 3.734% | 8.084% |
+| Frontend idle | 57.500% | 64.846% |
+| Page faults | 10336 | 134 |
+
+**Throughput: 50617.400 orders/sec | Elapsed: 19.758s | Runs: 5 | Clients: 1**
+
+
+### 2026-03-14 — try_send + flat array + write batching, 5 clients
+
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 0.984 | 1.894 |
+| User time | 3.229s | 4.785s |
+| Sys time | 17.878s | 45.956s |
+| Instructions | 8894051933 | 5595994548 |
+| Cycles | 9666061448 | 9201098401 |
+| IPC | 0.920 | 0.610 |
+| Branch miss rate | 4.024% | 8.252% |
+| Frontend idle | 39.678% | 64.708% |
+| Page faults | 42284 | 155 |
+
+**Throughput: 152448.800 orders/sec | Elapsed: 32.843s | Runs: 5 | Clients: 5**

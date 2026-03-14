@@ -15,4 +15,7 @@ struct ClientState{
     size_t bytes_read = 0;
     size_t bytes_sent = 0;
     size_t send_size = 0;
+    //changing to storing ClientState in vector, need to mark each slot in the vector to know if its active or not
+    //previously with map, every ClientState in the map was connected, we dont want to erase from middle of vector so we will keep states inside and simply mark them active or not
+    bool active = false;
 };

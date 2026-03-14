@@ -73,11 +73,15 @@ void ExchangeServer::start(){
 
     int flag = 1;
     setsockopt(server_fd_, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+    //up to 1024 file descriptors
+    clients_.resize(1024);
 }
 
 void ExchangeServer::run(){
     epoll_event events[64]; //buffer for ready events (may need to alter size)
     while(true){
+        flush_pending_writes();
+
         //n: number of events occured + written, events: where to write about any fds ready for reading, 64: number of events we can write to, -1: wait infinitely
         int n = epoll_wait(epoll_fd_, events, 64, -1);
         for (int i = 0; i < n; i++){
@@ -127,14 +131,13 @@ void ExchangeServer::accept_client(){
         int flag = 1;
         setsockopt(client_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
         clients_[client_fd] = ClientState{};//map the client fd to default constructed ClientState
+        clients_[client_fd].active = true;
     }
 }
 
 void ExchangeServer::handle_read(int fd){
-    auto it = clients_.find(fd);
-    //if client does not exist in our map
-    if(it == clients_.end()) return;
-    ClientState& client = it->second;
+    ClientState& client = clients_[fd];
+    if(!client.active) return;
 
     if(client.read_phase == ReadPhase::HEADER){
         //read into header_buffer offset by the number of bytes we have already read
@@ -207,11 +210,38 @@ void ExchangeServer::handle_read(int fd){
         client.bytes_read = 0;
     }
 }
+void ExchangeServer::try_send(int fd){
+    ClientState& client = clients_[fd];
+    if (!client.active) return;
+
+    if(client.write_buffer.empty()) return; //early exit if the buffer is empty, nothing to send/write
+    ssize_t n = send(fd, client.write_buffer.data() + client.bytes_sent, client.write_buffer.size() - client.bytes_sent, MSG_DONTWAIT);
+    if(n > 0){
+        client.bytes_sent += n;
+    }else if(n == 0){
+        disconnect_client(fd);
+        return;
+    }else if(n == -1){
+        if(errno == EAGAIN || errno == EWOULDBLOCK) return;
+        disconnect_client(fd);
+        return;
+        // throw std::runtime_error("error receiving client payload");
+    }
+    if(client.bytes_sent == client.write_buffer.size()){
+        //success, complete message sent
+        client.write_buffer.clear();
+        client.bytes_sent = 0;
+        return;
+    }else{
+        //didnt manage to send whole message in one, start listening for writes on this fd
+        set_epoll_write(fd, true);
+    }
+}
+
 
 void ExchangeServer::handle_write(int fd){
-    auto it = clients_.find(fd);
-    if (it == clients_.end()) return;
-    ClientState& client = it->second;
+    ClientState& client = clients_[fd];
+    if (!client.active) return;
 
     ssize_t n = send(fd, client.write_buffer.data() + client.bytes_sent, client.write_buffer.size() - client.bytes_sent, MSG_DONTWAIT);
     if(n > 0){
@@ -253,7 +283,8 @@ void ExchangeServer::disconnect_client(int fd){
     epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, fd, nullptr);
     close(fd);
     //remove the client from our mapping of client fd to ClientState
-    clients_.erase(fd);
+    clients_[fd] = ClientState{};//reset to new ClientState, instantiatied with active=false
+
 }
 
 void ExchangeServer::handle_message(int client_fd, const Message& message){
@@ -267,6 +298,8 @@ enum class MessageType : uint8_t {
 };
 */  
     ClientState& client = clients_[client_fd];
+
+
 
     switch(message.type){
         case MessageType::NEW_ORDER: {
@@ -284,12 +317,13 @@ enum class MessageType : uint8_t {
                 for (const Trade& trade : trades){
                     //notifies the taker that a trade was made
                     serializer_.serialize_trade(trade, client.write_buffer);
-
+                    
+ 
                     //need to also notify the maker, the counterparty of the trade
                     int counterparty_fd = order_to_client_fd_[order.side() == Side::ASK ? trade.buyer_order_id : trade.seller_order_id];
-                    ClientState& counterparty = clients_[counterparty_fd];
-                    serializer_.serialize_trade(trade, counterparty.write_buffer);
-                    set_epoll_write(counterparty_fd, true);
+                    serializer_.serialize_trade(trade, clients_[counterparty_fd].write_buffer);
+                    pending_writes_.push_back(counterparty_fd);
+
                 }
                 //only ack order after any trades have been sent
                 Acknowledgement ack{
@@ -333,9 +367,15 @@ enum class MessageType : uint8_t {
             throw std::runtime_error("unknown message type");
             break;
     }
-    //tell epoll to wake us up so we can send the buffer
-    set_epoll_write(client_fd, true);
+
+    pending_writes_.push_back(client_fd);
 }
 
+void ExchangeServer::flush_pending_writes(){
+    for(int fd : pending_writes_){
+        try_send(fd);
+    }
+    pending_writes_.clear();
+}
 
 
