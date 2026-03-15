@@ -298,7 +298,6 @@ void ExchangeServer::disconnect_client(int fd){
     close(fd);
     //remove the client from our mapping of client fd to ClientState
     clients_[fd] = ClientState{};//reset to new ClientState, instantiatied with active=false
-    
 }    
 
 
