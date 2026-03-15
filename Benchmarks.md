@@ -137,3 +137,37 @@ All benchmarks: 1M orders, localhost, printing disabled, Release mode.
 | Page faults | 42284 | 155 |
 
 **Throughput: 152448.800 orders/sec | Elapsed: 32.843s | Runs: 5 | Clients: 5**
+
+
+### 2026-03-14 — multithreaded, mutex queue, 1 client
+
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 1.999 | 0.640 |
+| User time | 24.448s | 0.602s |
+| Sys time | 7.815s | 8.182s |
+| Instructions | 302240630247 | 1113781092 |
+| Cycles | 96520396613 | 1715621669 |
+| IPC | 3.130 | 0.648 |
+| Branch miss rate | 0.116% | 8.136% |
+| Frontend idle | 27.976% | 64.858% |
+| Page faults | 9946 | 134 |
+
+**Throughput: 59940.600 orders/sec | Elapsed: 16.685s | Runs: 5 | Clients: 1**
+
+
+### 2026-03-14 — multithreaded, mutex queue, 5 clients
+
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 1.998 | 1.730 |
+| User time | 42.365s | 5.145s |
+| Sys time | 21.916s | 48.521s |
+| Instructions | 605233683098 | 5595907205 |
+| Cycles | 200096038608 | 9347505379 |
+| IPC | 3.024 | 0.600 |
+| Branch miss rate | 0.088% | 8.270% |
+| Frontend idle | 26.198% | 64.672% |
+| Page faults | 42405 | 155 |
+
+**Throughput: 131764.400 orders/sec | Elapsed: 38.016s | Runs: 5 | Clients: 5**

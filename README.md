@@ -1,18 +1,17 @@
 # Exchange Simulator
 
-High-performance simulated exchange built from scratch in C++. Order book, matching engine, binary serialization, TCP networking.
+High-performance simulated exchange built from scratch in C++. Order book, matching engine, binary serialization, TCP networking, multithreaded I/O and processing pipeline.
 
 ## Architecture
 
 ```mermaid
 graph LR
-    Clients[Concurrent Clients] -->|TCP Non-blocking|Server[Exchange Server]
-    Server -->|epoll multiplexing| Serializer[Binary Serializer]
-    Serializer --> Handler[Message Handler]
-    Handler --> ME[Matching Engine]
-    Handler --> OB[Order Book]
+    Clients[Concurrent Clients] -->|TCP Non-blocking| Server[Exchange Server I/O Thread]
+    Server -->|inbound queue| Processor[Order Processor Processing Thread]
+    Processor --> ME[Matching Engine]
+    Processor --> OB[Order Book]
     ME --> OB
-    Handler -->|Route Trade / Auth| Server
+    Processor -->|outbound queue| Server
     Server -->|TCP| Clients
 ```
 
@@ -40,6 +39,20 @@ classDiagram
         +vector~uint8_t~ read_buffer
         +vector~uint8_t~ write_buffer
     }
+    class ThreadSafeQueue~T~ {
+        -queue~T~ queue_
+        -mutex mutex_
+        +push(T item)
+        +try_pop() optional~T~
+    }
+    class OrderProcessor {
+        -MatchingEngine& matching_engine_
+        -OrderBook& order_book_
+        -Serializer& serializer_
+        -unordered_map order_to_client_fd_
+        +run()
+        +process(InboundMessage&)
+    }
     class Serializer {
         <<abstract>>
         +serialize_order()*
@@ -55,10 +68,7 @@ classDiagram
     }
     class ExchangeServer {
         -int epoll_fd_
-        -unordered_map clients_
-        -OrderBook& order_book_
-        -MatchingEngine& engine_
-        -Serializer& serializer_
+        -vector~ClientState~ clients_
         +start()
         +run()
         +handle_read(int)
@@ -70,23 +80,17 @@ classDiagram
         +connect()
         +run()
     }
-    
-    ExchangeServer *-- ClientState : Manages
+
+    ExchangeServer *-- ClientState : manages
+    ExchangeServer --> ThreadSafeQueue : pushes inbound, pops outbound
+    OrderProcessor --> ThreadSafeQueue : pops inbound, pushes outbound
+    OrderProcessor --> MatchingEngine
+    OrderProcessor --> OrderBook
+    OrderProcessor --> Serializer
     MatchingEngine --> OrderBook : friend access
     Serializer <|-- BinarySerializer
-    ExchangeServer --> MatchingEngine
-    ExchangeServer --> OrderBook
-    ExchangeServer --> Serializer
     ExchangeClient --> Serializer
 ```
-
-<!-- **Order Book** — 
-
-**Matching Engine** — 
-
-**Serialization** — 
-
-**Networking** —  -->
 
 ## Wire Format
 
@@ -96,15 +100,13 @@ classDiagram
 └──────────────┴──────────────────┴─────────────┘
 ```
 
-<!-- ## Performance -->
 ## Optimizations
-1. [TCP_NODELAY + Single Send Buffer](docs/improvements/nagles_algorithm.md) - 12 ops/sec -> 46K ops/sec (3,800x increase)
-2. [Pre-allocated Buffers & Zero-Allocation Path](docs/improvements/pre_allocated_buffers.md) - 46K -> 50K ops/sec, 83% instruction reduction
-3. [Non-blocking I/O & Epoll Multiplexing](docs/improvements/epoll_concurrency.md) - Unlocked horizontal scaling, 134K+ combined ops/sec
 
-<!-- ## Design Decisions -->
-
-<!-- Key tradeoffs: data structures, O(1) cancel, friend class, abstract serializer, TCP_NODELAY -->
+1. [TCP_NODELAY + Single Send Buffer](docs/improvements/nagles_algorithm.md) - 12 -> 46K ops/sec (3,800x)
+2. [Pre-allocated Buffers](docs/improvements/pre_allocated_buffers.md) - 46K -> 50K ops/sec, 83% instruction reduction
+3. [Epoll Multiplexing](docs/improvements/epoll_concurrency.md) - Unlocked multi-client support, 134K combined ops/sec
+4. [Flat Arrays & Write Batching](docs/improvements/flat_arrays_write_batching.md) - 134K -> 152K ops/sec, eliminated epoll_ctl and hash map overhead
+5. [Multithreaded I/O + Processing](docs/improvements/multithreading_mutex_queue.md) - Separated I/O from matching, 18% single-client gain, mutex contention under load
 
 ## Building
 
@@ -117,12 +119,12 @@ cmake --build .
 ./exchange
 
 # Terminal 2
-./client N #number of concurrent clients(optional, default=1)
+./client N  # number of concurrent clients (optional, default=1)
 ```
 
 ## Future Work
 
-- Multithreading
+- Lock-free ring buffer queue
 - Multicast UDP market data
 - Shared memory ring buffers
 - JSON serializer

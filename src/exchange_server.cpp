@@ -11,11 +11,10 @@
 #include <fcntl.h>
 #include <cerrno>
 #include <arpa/inet.h>
-ExchangeServer::ExchangeServer(uint16_t port, OrderBook& order_book, MatchingEngine& matching_engine, Serializer& serializer)
+ExchangeServer::ExchangeServer(uint16_t port, ThreadSafeQueue<InboundMessage>& iq, ThreadSafeQueue<OutboundMessage>& oq)
     : port_{port}
-    , order_book_{order_book}
-    , matching_engine_{matching_engine}
-    ,serializer_{serializer}
+    , inbound_queue_{iq}
+    , outbound_queue_{oq}
     {}
 
 
@@ -80,10 +79,11 @@ void ExchangeServer::start(){
 void ExchangeServer::run(){
     epoll_event events[64]; //buffer for ready events (may need to alter size)
     while(true){
+        drain_outbound_queue();
         flush_pending_writes();
 
-        //n: number of events occured + written, events: where to write about any fds ready for reading, 64: number of events we can write to, -1: wait infinitely
-        int n = epoll_wait(epoll_fd_, events, 64, -1);
+        //n: number of events occured + written, events: where to write about any fds ready for reading, 64: number of events we can write to, 0: non-blocking
+        int n = epoll_wait(epoll_fd_, events, 64, 0);
         for (int i = 0; i < n; i++){
             int fd = events[i].data.fd;//here we reaccess the data that we wanted returned on an event, that is the file descriptor
             if(fd == server_fd_){
@@ -199,17 +199,31 @@ void ExchangeServer::handle_read(int fd){
         if(client.bytes_read < client.payload_length){
             return;
         }
-        //if we have read the entire payload, construct and handle the message
-        Message message{
+        inbound_queue_.push(InboundMessage{
+            .fd = fd,
             .type = client.message_type,
-            .payload = client.read_buffer//NOTE: currently deep copying, look into improving this
-        };
-        handle_message(fd, message);
+            .payload = std::move(client.read_buffer)
+        });
+
         //now we are done with this message, reset clients state ready to read a new message
         client.read_phase = ReadPhase::HEADER;
         client.bytes_read = 0;
     }
 }
+
+void ExchangeServer::drain_outbound_queue(){
+    OutboundMessage message;
+    while(auto result = outbound_queue_.try_pop()){
+        OutboundMessage message = std::move(*result);
+        if(!clients_[message.fd].active) continue;
+        ClientState& client = clients_[message.fd];
+        client.write_buffer.insert(client.write_buffer.end(), message.payload.begin(), message.payload.end());
+        pending_writes_.push_back(message.fd);
+    }
+
+}
+
+
 void ExchangeServer::try_send(int fd){
     ClientState& client = clients_[fd];
     if (!client.active) return;
@@ -284,92 +298,9 @@ void ExchangeServer::disconnect_client(int fd){
     close(fd);
     //remove the client from our mapping of client fd to ClientState
     clients_[fd] = ClientState{};//reset to new ClientState, instantiatied with active=false
+    
+}    
 
-}
-
-void ExchangeServer::handle_message(int client_fd, const Message& message){
-/*
-enum class MessageType : uint8_t {
-    NEW_ORDER = 1,
-    CANCEL_ORDER = 2,
-    ORDER_ACK = 3,
-    REJECT = 4,
-    TRADE = 5
-};
-*/  
-    ClientState& client = clients_[client_fd];
-
-
-
-    switch(message.type){
-        case MessageType::NEW_ORDER: {
-            //get the id outside the try, so we have it in scope in the catch
-            uint64_t raw_id;
-            //id is at the start of the payload
-            std::memcpy(&raw_id, message.payload.data(), sizeof(uint64_t));
-            try {
-                Order order = serializer_.deserialize_order(message);
-                //send the order to the matching engine
-                std::vector<Trade> trades = matching_engine_.match(order);
-                //add the order id to client file descriptor mapping
-                order_to_client_fd_[order.id()] = client_fd;
-                //process any trades made, and send trade messages
-                for (const Trade& trade : trades){
-                    //notifies the taker that a trade was made
-                    serializer_.serialize_trade(trade, client.write_buffer);
-                    
- 
-                    //need to also notify the maker, the counterparty of the trade
-                    int counterparty_fd = order_to_client_fd_[order.side() == Side::ASK ? trade.buyer_order_id : trade.seller_order_id];
-                    serializer_.serialize_trade(trade, clients_[counterparty_fd].write_buffer);
-                    pending_writes_.push_back(counterparty_fd);
-
-                }
-                //only ack order after any trades have been sent
-                Acknowledgement ack{
-                    .id = order.id()
-                };
-                serializer_.serialize_acknowledgement(ack, client.write_buffer);
-            }catch(const std::exception& e){
-                Rejection rejection{
-                    .id = raw_id,
-                    .reason = std::string(e.what())
-                };
-                serializer_.serialize_rejection(rejection, client.write_buffer);
-                break;
-            }
-
-            break;
-        }
-        case MessageType::CANCEL_ORDER: {
-
-            uint64_t raw_id;
-            std::memcpy(&raw_id, message.payload.data(), sizeof(uint64_t));
-            try {
-                uint64_t id = serializer_.deserialize_cancel(message);
-                Acknowledgement cancel_ack{
-                    .id = id
-                };
-                serializer_.serialize_cancel_ack(cancel_ack, client.write_buffer);
-                order_book_.cancel_order(id);
-                order_to_client_fd_.erase(id);
-            }catch(const std::exception& e){
-                Rejection rejection{
-                    .id = raw_id,
-                    .reason = std::string(e.what())
-                };
-                serializer_.serialize_rejection(rejection, client.write_buffer);
-                break;
-            }
-            break;
-        }
-        default:
-            throw std::runtime_error("unknown message type");
-            break;
-    }
-
-    pending_writes_.push_back(client_fd);
-}
 
 void ExchangeServer::flush_pending_writes(){
     for(int fd : pending_writes_){
@@ -377,5 +308,7 @@ void ExchangeServer::flush_pending_writes(){
     }
     pending_writes_.clear();
 }
+
+
 
 
