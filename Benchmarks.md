@@ -207,4 +207,101 @@ All benchmarks: 1M orders, localhost, printing disabled, Release mode.
 
 **Throughput: 140042.600 orders/sec | Elapsed: 35.797s | Runs: 5 | Clients: 5**
 
+### 2026-03-15 — SPSC ring buffer, 1 client
 
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 2.000 | 0.670 |
+| User time | 23.622s | 0.574s |
+| Sys time | 6.706s | 8.106s |
+| Instructions | 385909550007 | 1114044313 |
+| Cycles | 93621392877 | 1692520228 |
+| IPC | 4.122 | 0.658 |
+| Branch miss rate | 0.120% | 8.058% |
+| Frontend idle | 4.546% | 64.632% |
+| Page faults | 9952 | 136 |
+
+**Throughput: 63,763 orders/sec | Elapsed: 15.685s | Runs: 5 | Clients: 1**
+
+### 2026-03-15 — SPSC ring buffer, 5 clients
+
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 1.999 | 1.837 |
+| User time | 39.861s | 5.171s |
+| Sys time | 19.921s | 48.600s |
+| Instructions | 827147427198 | 5595889086 |
+| Cycles | 199892428569 | 9384306105 |
+| IPC | 4.138 | 0.598 |
+| Branch miss rate | 0.060% | 8.370% |
+| Frontend idle | 2.738% | 64.912% |
+| Page faults | 42618 | 155 |
+
+**Throughput: 139,194 orders/sec | Elapsed: 35.952s | Runs: 5 | Clients: 5**
+
+
+### 2026-03-15 — Pipelined client + read batching, 1 client
+
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 1.999 | 0.994 |
+| User time | 9.952s | 1.077s |
+| Sys time | 3.198s | 3.999s |
+| Instructions | 162771150858 | 1083036619 |
+| Cycles | 39955707227 | 1168585281 |
+| IPC | 4.074 | 0.930 |
+| Branch miss rate | 0.112% | 8.542% |
+| Frontend idle | 4.722% | 60.976% |
+| Page faults | 10371 | 135 |
+
+**Throughput: 153,424 orders/sec | Elapsed: 6.520s | Runs: 5 | Clients: 1**
+
+### 2026-03-15 — Pipelined client + read batching, 5 clients
+
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 1.992 | 4.606 |
+| User time | 9.932s | 6.050s |
+| Sys time | 4.363s | 17.923s |
+| Instructions | 128355601644 | 5402834652 |
+| Cycles | 40683601098 | 5890314671 |
+| IPC | 3.154 | 0.916 |
+| Branch miss rate | 0.210% | 8.460% |
+| Frontend idle | 15.312% | 61.446% |
+| Page faults | 44477 | 155 |
+
+**Throughput: 749,967 orders/sec | Elapsed: 6.746s | Runs: 5 | Clients: 5**
+
+
+### 2026-03-15 — Client shoot and forget (no waiting for ACK), 1 client
+
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 1.995 | 0.629 |
+| User time | 3.783s | 0.230s |
+| Sys time | 1.388s | 0.914s |
+| Instructions | 56414510079 | 577510168 |
+| Cycles | 15215792286 | 431450221 |
+| IPC | 3.640 | 1.342 |
+| Branch miss rate | 0.142% | 3.530% |
+| Frontend idle | 12.084% | 51.766% |
+| Page faults | 10852 | 135 |
+
+**Throughput: 509224.800 orders/sec | Elapsed: 2.193s | Runs: 5 | Clients: 1**
+
+
+### 2026-03-15 — Client shoot and forget (no waiting for ACK), 5 clients
+
+| Metric | Server | Client |
+|--------|--------|--------|
+| CPU utilization | 1.995 | 0.427 |
+| User time | 12.692s | 1.229s |
+| Sys time | 4.895s | 2.128s |
+| Instructions | 164262677366 | 2877725640 |
+| Cycles | 50877412463 | 2085720421 |
+| IPC | 3.232 | 1.380 |
+| Branch miss rate | 0.166% | 3.528% |
+| Frontend idle | 17.660% | 51.420% |
+| Page faults | 30826 | 155 |
+
+**Throughput: 1170340.400 orders/sec | Elapsed: 8.342s | Runs: 5 | Clients: 5**

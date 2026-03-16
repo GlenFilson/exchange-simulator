@@ -12,6 +12,9 @@
 #include "inbound_message.hpp"
 #include "outbound_message.hpp"
 #include "order_processor.hpp"
+#include "spsc_ring_buffer.hpp"
+
+
 int main(){
    
 
@@ -22,9 +25,12 @@ int main(){
     // server.start();
     // server.run();
 
-    ThreadSafeQueue<InboundMessage> inbound_queue;
-    ThreadSafeQueue<OutboundMessage> outbound_queue;
+    // ThreadSafeQueue<InboundMessage> inbound_queue;
+    // ThreadSafeQueue<OutboundMessage> outbound_queue;
+    SPSCRingBuffer<InboundMessage, 8192> inbound_queue;
+    SPSCRingBuffer<OutboundMessage, 8192> outbound_queue;
 
+    
     OrderBook order_book;
     MatchingEngine matching_engine(order_book);
     BinarySerializer serializer;

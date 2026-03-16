@@ -11,4 +11,3 @@ add_executable(client src/client_main.cpp src/exchange_client.cpp src/order_simu
 target_include_directories(client PRIVATE include)
 
 
-

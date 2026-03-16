@@ -10,11 +10,13 @@
 #include "inbound_message.hpp"
 #include "outbound_message.hpp"
 #include "thread_safe_queue.hpp"
+#include "spsc_ring_buffer.hpp"
+
 
 
 class ExchangeServer{
     public:
-        ExchangeServer(uint16_t port, ThreadSafeQueue<InboundMessage>& iq, ThreadSafeQueue<OutboundMessage>& oq);
+        ExchangeServer(uint16_t port, SPSCRingBuffer<InboundMessage, 8192>& iq, SPSCRingBuffer<OutboundMessage, 8192>& oq);
 
         void start();
         void run();
@@ -38,7 +40,9 @@ class ExchangeServer{
         std::vector<int> pending_writes_;
         //port where we listen for connections
         uint16_t port_;
-        ThreadSafeQueue<InboundMessage>& inbound_queue_;
-        ThreadSafeQueue<OutboundMessage>& outbound_queue_;
+        // ThreadSafeQueue<InboundMessage>& inbound_queue_;
+        // ThreadSafeQueue<OutboundMessage>& outbound_queue_;
+        SPSCRingBuffer<InboundMessage, 8192>& inbound_queue_;
+        SPSCRingBuffer<OutboundMessage, 8192>& outbound_queue_;
 
 };

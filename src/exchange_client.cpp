@@ -33,33 +33,29 @@ void ExchangeClient::connect(){
     setsockopt(socket_fd_, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
 }
 
+
 void ExchangeClient::run(){
     int NUM_ORDERS = 1000000;
+    int BATCH_SIZE = 10000;
     auto start = std::chrono::high_resolution_clock::now();
     Message response;
-    for (int i = 0; i < NUM_ORDERS; i++){
-        // if(i % 100000 == 0) std::cout << "order: " << i << " sent\n";
-        Order order = order_simulator_.generate_order();
-        msg_buffer_.clear();
-        // order.toString();
-        serializer_.serialize_order(order, msg_buffer_);
-        send(socket_fd_, msg_buffer_.data(), msg_buffer_.size(), 0);
-        while(true){
-            if(!read_message(socket_fd_, response)) break;
-            if(response.type == MessageType::ORDER_ACK){
-                Acknowledgement ack = serializer_.deserialize_acknowledgement(response);
-                // std::cout << "ACK order: " << ack.id << "\n";
-                break;
-            }else if (response.type == MessageType::TRADE){
-                Trade trade = serializer_.deserialize_trade(response);
-                // std::cout << "Trade: " << trade.quantity << " @ " << trade.price << "\n";
-                //dont break on trade, trade does not mean the entire order has been filled
-            }else if(response.type == MessageType::REJECT){
-                Rejection rejection = serializer_.deserialize_rejection(response);
-                // std::cout << "Rejected: " << rejection.reason << "\n";
-                break;
-            }
+    for (int batch = 0; batch < NUM_ORDERS / BATCH_SIZE; batch++){
+        // send a full batch without waiting
+        for (int i = 0; i < BATCH_SIZE; i++){
+            Order order = order_simulator_.generate_order();
+            msg_buffer_.clear();
+            serializer_.serialize_order(order, msg_buffer_);
+            send(socket_fd_, msg_buffer_.data(), msg_buffer_.size(), 0);
         }
+        // now drain all responses for this batch
+        // int acks_received = 0;
+        // while (acks_received < BATCH_SIZE){
+        //     if (!read_message(socket_fd_, response)) break;
+        //     if (response.type == MessageType::ORDER_ACK || response.type == MessageType::REJECT){
+        //         acks_received++;
+        //     }
+        //     // trades are consumed but don't count toward acks
+        // }
     }
     auto end = std::chrono::high_resolution_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();

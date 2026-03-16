@@ -1,17 +1,17 @@
 # Exchange Simulator
 
-High-performance simulated exchange built from scratch in C++. Order book, matching engine, binary serialization, TCP networking, multithreaded I/O and processing pipeline.
+High-performance simulated exchange built from scratch in C++. Accepts orders over TCP sockets, matches with price-time priority, and routes fills to clients. Epoll I/O, multithreaded processing pipeline, lock-free queues, binary protocol. Profiled and optimized from 12 to 1.1M+ ops/sec.
 
 ## Architecture
 
 ```mermaid
 graph LR
-    Clients[Concurrent Clients] -->|TCP Non-blocking| Server[Exchange Server I/O Thread]
-    Server -->|inbound queue| Processor[Order Processor Processing Thread]
+    Clients[Concurrent Clients] -->|TCP Non-blocking| Server[Exchange Server\nI/O Thread]
+    Server -->|SPSC Ring Buffer| Processor[Order Processor\nProcessing Thread]
     Processor --> ME[Matching Engine]
     Processor --> OB[Order Book]
     ME --> OB
-    Processor -->|outbound queue| Server
+    Processor -->|SPSC Ring Buffer| Server
     Server -->|TCP| Clients
 ```
 
@@ -39,10 +39,11 @@ classDiagram
         +vector~uint8_t~ read_buffer
         +vector~uint8_t~ write_buffer
     }
-    class ThreadSafeQueue~T~ {
-        -queue~T~ queue_
-        -mutex mutex_
-        +push(T item)
+    class SPSCRingBuffer~T~ {
+        -array~T~ buffer_
+        -atomic~size_t~ head_
+        -atomic~size_t~ tail_
+        +try_push(T item) bool
         +try_pop() optional~T~
     }
     class OrderProcessor {
@@ -82,8 +83,8 @@ classDiagram
     }
 
     ExchangeServer *-- ClientState : manages
-    ExchangeServer --> ThreadSafeQueue : pushes inbound, pops outbound
-    OrderProcessor --> ThreadSafeQueue : pops inbound, pushes outbound
+    ExchangeServer --> SPSCRingBuffer : pushes inbound\npops outbound
+    OrderProcessor --> SPSCRingBuffer : pops inbound\npushes outbound
     OrderProcessor --> MatchingEngine
     OrderProcessor --> OrderBook
     OrderProcessor --> Serializer
@@ -102,11 +103,13 @@ classDiagram
 
 ## Optimizations
 
-1. [TCP_NODELAY + Single Send Buffer](docs/improvements/nagles_algorithm.md) - 12 -> 46K ops/sec (3,800x)
-2. [Pre-allocated Buffers](docs/improvements/pre_allocated_buffers.md) - 46K -> 50K ops/sec, 83% instruction reduction
-3. [Epoll Multiplexing](docs/improvements/epoll_concurrency.md) - Unlocked multi-client support, 134K combined ops/sec
-4. [Flat Arrays & Write Batching](docs/improvements/flat_arrays_write_batching.md) - 134K -> 152K ops/sec, eliminated epoll_ctl and hash map overhead
-5. [Multithreaded I/O + Processing](docs/improvements/multithreading_mutex_queue.md) - Separated I/O from matching, 18% single-client gain, mutex contention under load
+1. [TCP_NODELAY + Single Send Buffer](docs/improvements/01-tcp-nodelay.md) - 12 -> 46K ops/sec (3,800x)
+2. [Pre-allocated Buffers](docs/improvements/02-preallocated-buffers.md) - 46K -> 50K ops/sec, 83% instruction reduction
+3. [Epoll Multiplexing](docs/improvements/03-epoll-concurrency.md) - Unlocked multi-client support, 134K combined ops/sec
+4. [Flat Arrays & Write Batching](docs/improvements/04-flat-arrays-write-batching.md) - 134K -> 152K ops/sec, eliminated epoll_ctl and hash map overhead
+5. [Multithreaded I/O + Processing](docs/improvements/05-multithreaded-architecture.md) - Separated I/O from matching, 18% single-client gain
+6. [Lock-free SPSC Ring Buffer](docs/improvements/06-lock-free-ring-buffer.md) - Eliminated mutex contention, explored queue bottlenecks
+7. [Client Pipelining & Read Batching](docs/improvements/07-client-pipelining-read-batching.md) - 153K single-client, 750K with 5 clients
 
 ## Building
 
@@ -124,7 +127,6 @@ cmake --build .
 
 ## Future Work
 
-- Lock-free ring buffer queue
 - Multicast UDP market data
 - Shared memory ring buffers
 - JSON serializer

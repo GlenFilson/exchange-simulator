@@ -32,11 +32,13 @@ void OrderProcessor::process(InboundMessage& i_message){
                     
                     std::vector<uint8_t> cp_buffer;
                     serializer_.serialize_trade(trade, cp_buffer);
-                    //send counterparty straight away
-                    outbound_queue_.push(OutboundMessage{
+
+                    OutboundMessage o_message{
                         .fd = order_to_client_fd_[order.side() == Side::ASK ? trade.buyer_order_id : trade.seller_order_id],
                         .payload = std::move(cp_buffer)
-                    });
+                    };
+                    //send counterparty straight away, spin until its sent
+                    while(!outbound_queue_.try_push(o_message)){}
                 }
                 Acknowledgement ack{
                     .id = order.id()
@@ -84,15 +86,9 @@ void OrderProcessor::process(InboundMessage& i_message){
             throw std::runtime_error("unknown message type");
             return;
     }
-
-    outbound_queue_.push(OutboundMessage{
+    OutboundMessage o_message{
         .fd = i_message.fd, 
         .payload = std::move(buffer)
-    });
-
-  
-
-    
-
-
+    };
+    while(!outbound_queue_.try_push(o_message)){}
 }

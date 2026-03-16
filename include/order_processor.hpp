@@ -7,10 +7,11 @@
 #include "orderbook.hpp"
 #include "serializer.hpp"
 #include <cstdint>
+#include "spsc_ring_buffer.hpp"
 
 class OrderProcessor{
     public:
-        OrderProcessor(ThreadSafeQueue<InboundMessage>& iq, ThreadSafeQueue<OutboundMessage>& oq, MatchingEngine& me, OrderBook& ob, Serializer& s)
+        OrderProcessor(SPSCRingBuffer<InboundMessage, 8192>& iq, SPSCRingBuffer<OutboundMessage, 8192>& oq, MatchingEngine& me, OrderBook& ob, Serializer& s)
             : inbound_queue_{iq}
             , outbound_queue_{oq}
             , matching_engine_{me}
@@ -22,8 +23,10 @@ class OrderProcessor{
 
 
     private:
-        ThreadSafeQueue<InboundMessage>& inbound_queue_;
-        ThreadSafeQueue<OutboundMessage>& outbound_queue_;
+        // ThreadSafeQueue<InboundMessage>& inbound_queue_;
+        // ThreadSafeQueue<OutboundMessage>& outbound_queue_;
+        SPSCRingBuffer<InboundMessage, 8192>& inbound_queue_;
+        SPSCRingBuffer<OutboundMessage, 8192>& outbound_queue_;
         MatchingEngine& matching_engine_;
         OrderBook& orderbook_;
         Serializer& serializer_;

@@ -11,7 +11,7 @@
 #include <fcntl.h>
 #include <cerrno>
 #include <arpa/inet.h>
-ExchangeServer::ExchangeServer(uint16_t port, ThreadSafeQueue<InboundMessage>& iq, ThreadSafeQueue<OutboundMessage>& oq)
+ExchangeServer::ExchangeServer(uint16_t port, SPSCRingBuffer<InboundMessage, 8192>& iq, SPSCRingBuffer<OutboundMessage, 8192>& oq)
     : port_{port}
     , inbound_queue_{iq}
     , outbound_queue_{oq}
@@ -139,75 +139,81 @@ void ExchangeServer::handle_read(int fd){
     ClientState& client = clients_[fd];
     if(!client.active) return;
 
-    if(client.read_phase == ReadPhase::HEADER){
-        //read into header_buffer offset by the number of bytes we have already read
-        //we want to read another 5-bytes_read, basically read until we have read 5 bytes, filled the buffer
-        ssize_t n = recv(fd, client.header_buffer + client.bytes_read, 5-client.bytes_read, MSG_DONTWAIT);//non-blocking recv
-        if(n > 0){
-            client.bytes_read += n;
-        }else if(n == 0){//connection closed
-            disconnect_client(fd);
-            return;
-        }else if(n == -1){
-            //acceptable errors, just exit
-            if(errno == EAGAIN || errno == EWOULDBLOCK) return;
-            disconnect_client(fd);
-            return;
-            // throw std::runtime_error("error receiving client header");
-        }
-        //if we have not yet filled the buffer, return
-        if(client.bytes_read < 5){
-            return;
-        }
-        //if we have exactly filled the buffer (5 bytes), move on to payload reading phase
-        //first byte in buffer is the MessageType
-        client.message_type = static_cast<MessageType>(client.header_buffer[0]);
-        //the payload length is the next 4 bytes, (1-5)
-        std::memcpy(&client.payload_length, client.header_buffer+1, sizeof(uint32_t));
-        //convert from network to host byte order
-        client.payload_length = ntohl(client.payload_length);
-        //now we know how big the payload is, resize the buffer ready to accept it
-        client.read_buffer.resize(client.payload_length);
-        client.bytes_read = 0;//reset bytes_read for reading payload
-        //we are set up to enter payload reading phase, switch read_phase
-        if(client.payload_length != 0){
-            client.read_phase = ReadPhase::PAYLOAD;
-        }else{
-            //handle the case where the payload length is 0, a client is sending keep-alive pings
-            //we dont want to disconnect them, so just reset their state and ignore
-            client.read_phase = ReadPhase::HEADER;
+    while(true){//loop now until we reach error, EAGAIN. this way we batch reads(if this client has multiple) instead of just doing 1 read per epoll event
+        if(client.read_phase == ReadPhase::HEADER){
+            //read into header_buffer offset by the number of bytes we have already read
+            //we want to read another 5-bytes_read, basically read until we have read 5 bytes, filled the buffer
+            ssize_t n = recv(fd, client.header_buffer + client.bytes_read, 5-client.bytes_read, MSG_DONTWAIT);//non-blocking recv
+            if(n > 0){
+                client.bytes_read += n;
+            }else if(n == 0){//connection closed
+                disconnect_client(fd);
+                return;
+            }else if(n == -1){
+                //acceptable errors, just exit
+                if(errno == EAGAIN || errno == EWOULDBLOCK) return;
+                disconnect_client(fd);
+                return;
+                // throw std::runtime_error("error receiving client header");
+            }
+            //if we have not yet filled the buffer, return
+            if(client.bytes_read < 5){
+                return;
+            }
+            //if we have exactly filled the buffer (5 bytes), move on to payload reading phase
+            //first byte in buffer is the MessageType
+            client.message_type = static_cast<MessageType>(client.header_buffer[0]);
+            //the payload length is the next 4 bytes, (1-5)
+            std::memcpy(&client.payload_length, client.header_buffer+1, sizeof(uint32_t));
+            //convert from network to host byte order
+            client.payload_length = ntohl(client.payload_length);
+            //now we know how big the payload is, resize the buffer ready to accept it
+            client.read_buffer.resize(client.payload_length);
+            client.bytes_read = 0;//reset bytes_read for reading payload
+            //we are set up to enter payload reading phase, switch read_phase
+            if(client.payload_length != 0){
+                client.read_phase = ReadPhase::PAYLOAD;
+            }else{
+                //handle the case where the payload length is 0, a client is sending keep-alive pings
+                //we dont want to disconnect them, so just reset their state and ignore
+                client.read_phase = ReadPhase::HEADER;
+            }
+            
         }
         
-    }
-    
-    if(client.read_phase == ReadPhase::PAYLOAD){
-        //write data into the data section of the read_buffer vector
-        ssize_t n = recv(fd, client.read_buffer.data() + client.bytes_read, client.payload_length-client.bytes_read, MSG_DONTWAIT);
-        if(n > 0){
-            client.bytes_read += n;
-        }else if(n == 0){//connection closed
-            disconnect_client(fd);
-            return;
-        }else if(n == -1){
-            //acceptable errors, just exit
-            if(errno == EAGAIN || errno == EWOULDBLOCK) return;
-            disconnect_client(fd);
-            return;
-            // throw std::runtime_error("error receiving client payload");
-        }
-        //if we have not yet filled the buffer, return
-        if(client.bytes_read < client.payload_length){
-            return;
-        }
-        inbound_queue_.push(InboundMessage{
-            .fd = fd,
-            .type = client.message_type,
-            .payload = std::move(client.read_buffer)
-        });
+        if(client.read_phase == ReadPhase::PAYLOAD){
+            if(client.bytes_read < client.payload_length){
+                //write data into the data section of the read_buffer vector
+                ssize_t n = recv(fd, client.read_buffer.data() + client.bytes_read, client.payload_length-client.bytes_read, MSG_DONTWAIT);
+                if(n > 0){
+                    client.bytes_read += n;
+                }else if(n == 0){//connection closed
+                    disconnect_client(fd);
+                    return;
+                }else if(n == -1){
+                    //acceptable errors, just exit
+                    if(errno == EAGAIN || errno == EWOULDBLOCK) return;
+                    disconnect_client(fd);
+                    return;
+                    // throw std::runtime_error("error receiving client payload");
+                }
+                //if we have not yet filled the buffer, return
+                if(client.bytes_read < client.payload_length){
+                    return;
+                }
+            }
+            InboundMessage i_message{
+                .fd = fd,
+                .type = client.message_type,
+                .payload = client.read_buffer
+            };
 
-        //now we are done with this message, reset clients state ready to read a new message
-        client.read_phase = ReadPhase::HEADER;
-        client.bytes_read = 0;
+            if(!inbound_queue_.try_push(i_message))return;
+
+            //now we are done with this message, reset clients state ready to read a new message
+            client.read_phase = ReadPhase::HEADER;
+            client.bytes_read = 0;
+        }
     }
 }
 
