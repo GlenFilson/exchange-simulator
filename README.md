@@ -92,6 +92,9 @@ classDiagram
     Serializer <|-- BinarySerializer
     ExchangeClient --> Serializer
 ```
+## Flame Graph
+![](docs/flame-graph.svg)
+
 
 ## Wire Format
 
