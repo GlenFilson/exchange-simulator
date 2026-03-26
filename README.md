@@ -1,6 +1,6 @@
 # Exchange Simulator
 
-High-performance simulated exchange built from scratch in C++. Accepts orders over TCP sockets, matches with price-time priority, and routes fills to clients. Epoll I/O, multithreaded processing pipeline, lock-free queues, binary protocol. Profiled and optimized from 12 to 1.1M+ ops/sec.
+High-performance simulated exchange built from scratch in C++. Accepts orders over TCP sockets, matches with price-time priority, and routes fills to clients. Epoll I/O, multithreaded processing pipeline, lock-free queues, binary protocol. Profiled and optimized from 12 to 750k+ ops/sec.
 
 ## Architecture
 
@@ -113,6 +113,7 @@ classDiagram
 5. [Multithreaded I/O + Processing](docs/improvements/05-multithreaded-architecture.md) - Separated I/O from matching, 18% single-client gain
 6. [Lock-free SPSC Ring Buffer](docs/improvements/06-lock-free-ring-buffer.md) - Eliminated mutex contention, explored queue bottlenecks
 7. [Client Pipelining & Read Batching](docs/improvements/07-client-pipelining-read-batching.md) - 153K single-client, 750K with 5 clients
+8. [Fixed-size Messages & Allocation Reduction](docs/improvements/08-fixed-size-messages-allocation-reduction.md) - Zero-allocation queue path, batched recv, integer prices, I/O bottleneck analysis
 
 ## Building
 

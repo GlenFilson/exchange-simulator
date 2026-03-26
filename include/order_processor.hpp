@@ -27,6 +27,10 @@ class OrderProcessor{
         // ThreadSafeQueue<OutboundMessage>& outbound_queue_;
         SPSCRingBuffer<InboundMessage, 8192>& inbound_queue_;
         SPSCRingBuffer<OutboundMessage, 8192>& outbound_queue_;
+        std::vector<uint8_t> taker_buffer_;
+        std::vector<uint8_t> maker_buffer_;
+        Message deserialization_message_;
+        std::vector<Trade> trades_;
         MatchingEngine& matching_engine_;
         OrderBook& orderbook_;
         Serializer& serializer_;

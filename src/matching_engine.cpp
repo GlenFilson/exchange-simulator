@@ -10,9 +10,9 @@ MatchingEngine::MatchingEngine(OrderBook& orderBook)
     : orderBook_{orderBook}
     {}
 
-std::vector<Trade> MatchingEngine::match(const Order& order){
+void MatchingEngine::match(const Order& order, std::vector<Trade>& trades){
     uint32_t remaining_quantity = order.quantity();
-    std::vector<Trade> trades;
+    trades.clear();
     if(order.side() == Side::BID){
         while(remaining_quantity > 0 && !(orderBook_.asks_.empty())){
             //access the first element in asks, the best price, lowest
@@ -99,7 +99,4 @@ std::vector<Trade> MatchingEngine::match(const Order& order){
             orderBook_.add_order(remaining_order);
         }
     }
-
-
-return trades;
 }

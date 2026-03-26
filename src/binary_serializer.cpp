@@ -8,12 +8,12 @@ void BinarySerializer::serialize_order(const Order& order, std::vector<uint8_t>&
     /*Order
     uint64_t timestamp_;
     uint64_t id_;
-    double price_;
+    int64_t price_;
     uint32_t quantity_;
     Side side_;
     OrderType orderType_;
     */
-    constexpr size_t PAYLOAD_SIZE = sizeof(uint64_t) + sizeof(double) 
+    constexpr size_t PAYLOAD_SIZE = sizeof(uint64_t) + sizeof(int64_t)
     + sizeof(uint32_t) + sizeof(Side) + sizeof(OrderType);
     
     //offset begins at the current size of the buffer, we are appending to it
@@ -40,9 +40,9 @@ void BinarySerializer::serialize_order(const Order& order, std::vector<uint8_t>&
         std::memcpy(buffer.data() + offset, &id, sizeof(uint64_t));
         offset+=sizeof(uint64_t);
         //price
-        double price = order.price();
-        std::memcpy(buffer.data() + offset, &price, sizeof(double));
-        offset+=sizeof(double);
+        int64_t price = order.price();
+        std::memcpy(buffer.data() + offset, &price, sizeof(int64_t));
+        offset+=sizeof(int64_t);
         //quantity
         uint32_t quantity = order.quantity();
         std::memcpy(buffer.data() + offset, &quantity, sizeof(uint32_t));
@@ -63,9 +63,9 @@ Order BinarySerializer::deserialize_order(const Message& message){
         uint64_t id;
         std::memcpy(&id, payload.data() + offset, sizeof(uint64_t));
         offset+=sizeof(uint64_t);
-        double price;
-        std::memcpy(&price, payload.data() + offset, sizeof(double));
-        offset+=sizeof(double);
+        int64_t price;
+        std::memcpy(&price, payload.data() + offset, sizeof(int64_t));
+        offset+=sizeof(int64_t);
         //quantity
         uint32_t quantity;
         std::memcpy(&quantity, payload.data() + offset, sizeof(quantity));
@@ -182,7 +182,7 @@ Rejection BinarySerializer::deserialize_rejection(const Message& message){
 }
 
 void BinarySerializer::serialize_trade(const Trade& trade, std::vector<uint8_t>& buffer){
-    constexpr size_t PAYLOAD_SIZE = sizeof(double) + sizeof(uint64_t) + sizeof(uint64_t)
+    constexpr size_t PAYLOAD_SIZE = sizeof(int64_t) + sizeof(uint64_t) + sizeof(uint64_t)
                         + sizeof(uint32_t) + sizeof(uint64_t);
     size_t offset = buffer.size();
     buffer.resize(offset + 5 + PAYLOAD_SIZE);
@@ -195,8 +195,8 @@ void BinarySerializer::serialize_trade(const Trade& trade, std::vector<uint8_t>&
     std::memcpy(buffer.data() + offset, &net_length, sizeof(uint32_t));
     offset+=sizeof(uint32_t);
 
-    std::memcpy(buffer.data() + offset, &trade.price, sizeof(double));
-    offset+=sizeof(double);
+    std::memcpy(buffer.data() + offset, &trade.price, sizeof(int64_t));
+    offset+=sizeof(int64_t);
 
     std::memcpy(buffer.data() + offset, &trade.buyer_order_id, sizeof(uint64_t));
     offset+=sizeof(uint64_t);
@@ -213,9 +213,9 @@ void BinarySerializer::serialize_trade(const Trade& trade, std::vector<uint8_t>&
 Trade BinarySerializer::deserialize_trade(const Message& message){
     size_t offset = 0;
 
-    double price;
-    std::memcpy(&price, message.payload.data() + offset, sizeof(double));
-    offset+=sizeof(double);
+    int64_t price;
+    std::memcpy(&price, message.payload.data() + offset, sizeof(int64_t));
+    offset+=sizeof(int64_t);
 
     uint64_t buyer_order_id;
     std::memcpy(&buyer_order_id, message.payload.data() + offset, sizeof(uint64_t));

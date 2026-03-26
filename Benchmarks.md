@@ -272,36 +272,3 @@ All benchmarks: 1M orders, localhost, printing disabled, Release mode.
 
 **Throughput: 749,967 orders/sec | Elapsed: 6.746s | Runs: 5 | Clients: 5**
 
-
-### 2026-03-15 — Client shoot and forget (no waiting for ACK), 1 client
-
-| Metric | Server | Client |
-|--------|--------|--------|
-| CPU utilization | 1.995 | 0.629 |
-| User time | 3.783s | 0.230s |
-| Sys time | 1.388s | 0.914s |
-| Instructions | 56414510079 | 577510168 |
-| Cycles | 15215792286 | 431450221 |
-| IPC | 3.640 | 1.342 |
-| Branch miss rate | 0.142% | 3.530% |
-| Frontend idle | 12.084% | 51.766% |
-| Page faults | 10852 | 135 |
-
-**Throughput: 509224.800 orders/sec | Elapsed: 2.193s | Runs: 5 | Clients: 1**
-
-
-### 2026-03-15 — Client shoot and forget (no waiting for ACK), 5 clients
-
-| Metric | Server | Client |
-|--------|--------|--------|
-| CPU utilization | 1.995 | 0.427 |
-| User time | 12.692s | 1.229s |
-| Sys time | 4.895s | 2.128s |
-| Instructions | 164262677366 | 2877725640 |
-| Cycles | 50877412463 | 2085720421 |
-| IPC | 3.232 | 1.380 |
-| Branch miss rate | 0.166% | 3.528% |
-| Frontend idle | 17.660% | 51.420% |
-| Page faults | 30826 | 155 |
-
-**Throughput: 1170340.400 orders/sec | Elapsed: 8.342s | Runs: 5 | Clients: 5**
