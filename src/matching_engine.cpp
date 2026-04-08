@@ -16,7 +16,7 @@ void MatchingEngine::match(const Order& order, std::vector<Trade>& trades){
     if(order.side() == Side::BID){
         while(remaining_quantity > 0 && !(orderBook_.asks_.empty())){
             //access the first element in asks, the best price, lowest
-            double best_ask = orderBook_.asks_.begin()->first;
+            int64_t best_ask = orderBook_.asks_.begin()->first;
             //if its a limit order and the price dosent cross the book, cant match, break
             if(order.orderType() == OrderType::LIMIT && order.price() < best_ask){
                 break;   
@@ -63,7 +63,7 @@ void MatchingEngine::match(const Order& order, std::vector<Trade>& trades){
         }
     }else if(order.side() == Side::ASK){
         while(remaining_quantity > 0 && !(orderBook_.bids_.empty())){
-            double best_bid = orderBook_.bids_.begin()->first;
+            int64_t best_bid = orderBook_.bids_.begin()->first;
             //order dosent cross book, cant match. asking more than best bid
             if (order.orderType() == OrderType::LIMIT && order.price() > best_bid){
                 break;
