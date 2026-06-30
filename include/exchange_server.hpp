@@ -11,12 +11,13 @@
 #include "outbound_message.hpp"
 #include "thread_safe_queue.hpp"
 #include "spsc_ring_buffer.hpp"
+#include "types.hpp"
 
 
 
 class ExchangeServer{
     public:
-        ExchangeServer(uint16_t port, SPSCRingBuffer<InboundMessage, 8192>& iq, SPSCRingBuffer<OutboundMessage, 8192>& oq);
+        ExchangeServer(uint16_t port, SPSCRingBuffer<InboundMessage, DEFAULT_RING_CAPACITY>& iq, SPSCRingBuffer<OutboundMessage, DEFAULT_RING_CAPACITY>& oq);
 
         void start();
         void run();
@@ -42,7 +43,7 @@ class ExchangeServer{
         uint16_t port_;
         // ThreadSafeQueue<InboundMessage>& inbound_queue_;
         // ThreadSafeQueue<OutboundMessage>& outbound_queue_;
-        SPSCRingBuffer<InboundMessage, 8192>& inbound_queue_;
-        SPSCRingBuffer<OutboundMessage, 8192>& outbound_queue_;
+        SPSCRingBuffer<InboundMessage, DEFAULT_RING_CAPACITY>& inbound_queue_;
+        SPSCRingBuffer<OutboundMessage, DEFAULT_RING_CAPACITY>& outbound_queue_;
 
 };

@@ -3,7 +3,7 @@
 #include <chrono>
 
 
-OrderSimulator::OrderSimulator(double cp, uint64_t starting_id)
+OrderSimulator::OrderSimulator(Price cp, uint64_t starting_id)
 	/*
 	initialiser list instead of explicit member assignment
 	member assignment initialises members with a default value, then reassigns it
@@ -21,12 +21,19 @@ Order OrderSimulator::generate_order(){
 	std::uniform_int_distribution<int> side_dist(0, 1);
 	//use the distribution object with the rng_, random_device
 	std::uniform_int_distribution<int> order_type_dist(0, 1);
-	std::normal_distribution<double> price_dist(center_price_, 5.0);
+	std::normal_distribution<double> price_dist(static_cast<double>(center_price_), 5.0);
 	std::uniform_int_distribution<uint32_t> quantity_dist(1, 1000);
 
 	Side side = side_dist(rng_) == 0 ? Side::BID : Side::ASK;
 	OrderType orderType = order_type_dist(rng_) == 0 ? OrderType::LIMIT : OrderType::MARKET; 
-	double price = (orderType == OrderType::LIMIT ? price_dist(rng_) : 0);
+	// Generate integer price by rounding and clamping to at least 1 for limit orders
+	Price price = 0;
+	if (orderType == OrderType::LIMIT) {
+		double sampled = price_dist(rng_);
+		long long rounded = static_cast<long long>(std::llround(sampled));
+		if (rounded < 1) rounded = 1;
+		price = static_cast<Price>(rounded);
+	}
 	uint32_t quantity = quantity_dist(rng_);
 	
 	//assign the counter then increment it (post)

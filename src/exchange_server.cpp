@@ -12,7 +12,7 @@
 #include <cerrno>
 #include <arpa/inet.h>
 #include <algorithm>
-ExchangeServer::ExchangeServer(uint16_t port, SPSCRingBuffer<InboundMessage, 8192>& iq, SPSCRingBuffer<OutboundMessage, 8192>& oq)
+ExchangeServer::ExchangeServer(uint16_t port, SPSCRingBuffer<InboundMessage, DEFAULT_RING_CAPACITY>& iq, SPSCRingBuffer<OutboundMessage, DEFAULT_RING_CAPACITY>& oq)
     : port_{port}
     , inbound_queue_{iq}
     , outbound_queue_{oq}

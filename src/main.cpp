@@ -13,6 +13,7 @@
 #include "outbound_message.hpp"
 #include "order_processor.hpp"
 #include "spsc_ring_buffer.hpp"
+#include "types.hpp"
 
 
 int main(){
@@ -27,8 +28,8 @@ int main(){
 
     // ThreadSafeQueue<InboundMessage> inbound_queue;
     // ThreadSafeQueue<OutboundMessage> outbound_queue;
-    SPSCRingBuffer<InboundMessage, 8192> inbound_queue;
-    SPSCRingBuffer<OutboundMessage, 8192> outbound_queue;
+    SPSCRingBuffer<InboundMessage, DEFAULT_RING_CAPACITY> inbound_queue;
+    SPSCRingBuffer<OutboundMessage, DEFAULT_RING_CAPACITY> outbound_queue;
 
     
     OrderBook order_book;
