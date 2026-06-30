@@ -12,7 +12,6 @@ MatchingEngine::MatchingEngine(OrderBook& orderBook)
 
 void MatchingEngine::match(const Order& order, std::vector<Trade>& trades){
     uint32_t remaining_quantity = order.quantity();
-    trades.clear();
     if(order.side() == Side::BID){
         while(remaining_quantity > 0 && !(orderBook_.asks_.empty())){
             //access the first element in asks, the best price, lowest

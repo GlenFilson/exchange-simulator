@@ -33,6 +33,7 @@ class OrderProcessor{
         std::vector<Trade> trades_;
         MatchingEngine& matching_engine_;
         OrderBook& orderbook_;
+        std::vector<Trade> trades_;
         Serializer& serializer_;
         std::unordered_map<uint64_t, int> order_to_client_fd_;
 
