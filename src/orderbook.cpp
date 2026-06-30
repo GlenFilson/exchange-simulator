@@ -10,13 +10,13 @@
 
 
 //return std::optional to protect incase the maps are empty
-std::optional<double> OrderBook::best_bid() const {
+std::optional<int64_t> OrderBook::best_bid() const {
     if (!bids_.empty()) return bids_.begin()->first;
     return std::nullopt;
 
 }
 
-std::optional<double> OrderBook::best_ask() const {   
+std::optional<int64_t> OrderBook::best_ask() const {   
     if (!asks_.empty()) return asks_.begin()->first;
     return std::nullopt;
 }

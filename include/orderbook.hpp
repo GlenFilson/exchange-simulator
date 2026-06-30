@@ -13,8 +13,8 @@ class OrderBook {
     friend class MatchingEngine;
 
     public:
-        std::optional<double> best_bid() const;
-        std::optional<double> best_ask() const;
+        std::optional<int64_t> best_bid() const;
+        std::optional<int64_t> best_ask() const;
         //take reference to order, not order itself. dont copy
         void add_order(const Order& order);
         void cancel_order(uint64_t id);
@@ -25,9 +25,9 @@ class OrderBook {
 
         //maps store <price, list> where list contains orders
         //prices sorted high to low, force with comparator std::greater
-        std::map<double, std::list<Order>, std::greater<double>> bids_;
+        std::map<int64_t, std::list<Order>, std::greater<int64_t>> bids_;
         //default comparator sorts low to high
-        std::map <double, std::list<Order>> asks_;
+        std::map <int64_t, std::list<Order>> asks_;
         
    
         /*     
@@ -40,7 +40,7 @@ class OrderBook {
         */
         struct OrderLocation {
             Side side;
-            double price;
+            int64_t price;
             std::list<Order>::iterator list_position;
         };
         //maps order ids to their OrderLocation

@@ -48,14 +48,14 @@ void ExchangeClient::run(){
             send(socket_fd_, msg_buffer_.data(), msg_buffer_.size(), 0);
         }
         // now drain all responses for this batch
-        // int acks_received = 0;
-        // while (acks_received < BATCH_SIZE){
-        //     if (!read_message(socket_fd_, response)) break;
-        //     if (response.type == MessageType::ORDER_ACK || response.type == MessageType::REJECT){
-        //         acks_received++;
-        //     }
-        //     // trades are consumed but don't count toward acks
-        // }
+        int acks_received = 0;
+        while (acks_received < BATCH_SIZE){
+            if (!read_message(socket_fd_, response)) break;
+            if (response.type == MessageType::ORDER_ACK || response.type == MessageType::REJECT){
+                acks_received++;
+            }
+            // trades are consumed but don't count toward acks
+        }
     }
     auto end = std::chrono::high_resolution_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
