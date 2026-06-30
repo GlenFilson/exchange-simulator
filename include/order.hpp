@@ -3,6 +3,7 @@
 //for the fixed size integers types
 #include <cstdint>
 #include <chrono>
+#include "types.hpp"
 #include <stdexcept>
 #include <iostream>
 
@@ -24,7 +25,7 @@ enum class OrderType : uint8_t{
 
 class Order {
     public:
-        Order(uint64_t id, double price, uint32_t quantity, Side side, OrderType orderType)
+        Order(OrderId id, Price price, Quantity quantity, Side side, OrderType orderType)
         : timestamp_{static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
 		std::chrono::high_resolution_clock::now().time_since_epoch()
 	        ).count())}
@@ -43,8 +44,8 @@ class Order {
 
         uint64_t timestamp() const { return timestamp_;}
         uint64_t id() const {return id_;}
-        double price()const {return price_;}
-        uint32_t quantity() const {return quantity_;}
+        Price price()const {return price_;}
+        Quantity quantity() const {return quantity_;}
         Side side() const {return side_;}
         OrderType orderType() const {return orderType_;}
 
@@ -64,10 +65,10 @@ class Order {
 
 
     private:
-        uint64_t timestamp_;
-        uint64_t id_;
-        double price_;
-        uint32_t quantity_;
+        Timestamp timestamp_;
+        OrderId id_;
+        Price price_;
+        Quantity quantity_;
         Side side_;
         OrderType orderType_;
 };

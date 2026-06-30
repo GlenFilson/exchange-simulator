@@ -1,5 +1,6 @@
 #include "order_processor.hpp"
 #include <cstring>
+#include <thread>
 void OrderProcessor::run(){
     
     while(true){
@@ -38,8 +39,8 @@ void OrderProcessor::process(InboundMessage& i_message){
                         .fd = order_to_client_fd_[order.side() == Side::ASK ? trade.buyer_order_id : trade.seller_order_id],
                         .payload = std::move(cp_buffer)
                     };
-                    //send counterparty straight away, spin until its sent
-                    while(!outbound_queue_.try_push(o_message)){}
+                    //send counterparty straight away, yield until it's pushed
+                    while(!outbound_queue_.try_push(o_message)) std::this_thread::yield();
                 }
                 Acknowledgement ack{
                     .id = order.id()
@@ -91,5 +92,5 @@ void OrderProcessor::process(InboundMessage& i_message){
         .fd = i_message.fd, 
         .payload = std::move(buffer)
     };
-    while(!outbound_queue_.try_push(o_message)){}
+    while(!outbound_queue_.try_push(o_message)) std::this_thread::yield();
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include <map>
+#include "types.hpp"
 #include <vector>
 #include <list>
 #include <optional>
@@ -13,11 +14,11 @@ class OrderBook {
     friend class MatchingEngine;
 
     public:
-        std::optional<double> best_bid() const;
-        std::optional<double> best_ask() const;
+        std::optional<Price> best_bid() const;
+        std::optional<Price> best_ask() const;
         //take reference to order, not order itself. dont copy
         void add_order(const Order& order);
-        void cancel_order(uint64_t id);
+        void cancel_order(OrderId id);
         void print_depth(std::ostream& out, int levels) const;
 
 
@@ -25,9 +26,9 @@ class OrderBook {
 
         //maps store <price, list> where list contains orders
         //prices sorted high to low, force with comparator std::greater
-        std::map<double, std::list<Order>, std::greater<double>> bids_;
+        std::map<Price, std::list<Order>, std::greater<Price>> bids_;
         //default comparator sorts low to high
-        std::map <double, std::list<Order>> asks_;
+        std::map <Price, std::list<Order>> asks_;
         
    
         /*     
@@ -40,11 +41,11 @@ class OrderBook {
         */
         struct OrderLocation {
             Side side;
-            double price;
+            Price price;
             std::list<Order>::iterator list_position;
         };
         //maps order ids to their OrderLocation
-        std::unordered_map <uint64_t, OrderLocation> order_map_;
+        std::unordered_map <OrderId, OrderLocation> order_map_;
 
 
 };

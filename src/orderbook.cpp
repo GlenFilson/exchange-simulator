@@ -10,13 +10,13 @@
 
 
 //return std::optional to protect incase the maps are empty
-std::optional<double> OrderBook::best_bid() const {
+std::optional<Price> OrderBook::best_bid() const {
     if (!bids_.empty()) return bids_.begin()->first;
     return std::nullopt;
 
 }
 
-std::optional<double> OrderBook::best_ask() const {   
+std::optional<Price> OrderBook::best_ask() const {   
     if (!asks_.empty()) return asks_.begin()->first;
     return std::nullopt;
 }
@@ -49,7 +49,7 @@ void OrderBook::add_order(const Order& order){
 
 }
 
-void OrderBook::cancel_order(uint64_t id){
+void OrderBook::cancel_order(OrderId id){
     //.find() returns the element at the position if it exists, else it returns an interator for the end of the map
     //get it outside of the conditional to avoid duplication, alternative is to find if it exists in condition, then in the body find it again to do operation
     auto it = order_map_.find(id);
@@ -81,12 +81,12 @@ void OrderBook::cancel_order(uint64_t id){
 
 void OrderBook::print_depth(std::ostream& out, int levels) const{
         out << "---order book---" << "\n";
-        std::vector<std::pair<double, uint32_t>> asks;
+        std::vector<std::pair<Price, Quantity>> asks;
         asks.reserve(std::min(levels, static_cast<int>(asks_.size())));
         auto asks_it = asks_.begin();
         for(int i = 0; i < levels && asks_it!=asks_.end(); i ++){
-            double price = asks_it->first;
-            uint32_t total_quantity{0};
+            Price price = asks_it->first;
+            Quantity total_quantity{0};
             for (const Order& order : asks_it->second){
                 total_quantity+=order.quantity();
             }
@@ -101,8 +101,8 @@ void OrderBook::print_depth(std::ostream& out, int levels) const{
         out << "--------------" << "\n";
         auto bids_it = bids_.begin();
         for(int i = 0; i < levels && bids_it!= bids_.end(); i++){
-            double price = bids_it->first;
-            uint32_t total_quantity{0};
+            Price price = bids_it->first;
+            Quantity total_quantity{0};
             for (const Order& order : bids_it->second){
                 total_quantity+=order.quantity();
             }

@@ -8,6 +8,7 @@
 #include "serializer.hpp"
 #include <cstdint>
 #include "spsc_ring_buffer.hpp"
+#include "types.hpp"
 
 class OrderProcessor{
     public:
@@ -31,6 +32,6 @@ class OrderProcessor{
         OrderBook& orderbook_;
         std::vector<Trade> trades_;
         Serializer& serializer_;
-        std::unordered_map<uint64_t, int> order_to_client_fd_;
+        std::unordered_map<OrderId, int> order_to_client_fd_;
 
 };

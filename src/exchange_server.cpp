@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <cerrno>
 #include <arpa/inet.h>
+#include <algorithm>
 ExchangeServer::ExchangeServer(uint16_t port, SPSCRingBuffer<InboundMessage, 8192>& iq, SPSCRingBuffer<OutboundMessage, 8192>& oq)
     : port_{port}
     , inbound_queue_{iq}
@@ -130,6 +131,10 @@ void ExchangeServer::accept_client(){
     
         int flag = 1;
         setsockopt(client_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+        if (static_cast<size_t>(client_fd) >= clients_.size()){
+            size_t newSize = std::max(clients_.size() * 2, static_cast<size_t>(client_fd + 1));
+            clients_.resize(newSize);
+        }
         clients_[client_fd] = ClientState{};//map the client fd to default constructed ClientState
         clients_[client_fd].active = true;
     }
@@ -221,6 +226,7 @@ void ExchangeServer::drain_outbound_queue(){
     OutboundMessage message;
     while(auto result = outbound_queue_.try_pop()){
         OutboundMessage message = std::move(*result);
+        if (static_cast<size_t>(message.fd) >= clients_.size()) continue;
         if(!clients_[message.fd].active) continue;
         ClientState& client = clients_[message.fd];
         client.write_buffer.insert(client.write_buffer.end(), message.payload.begin(), message.payload.end());
