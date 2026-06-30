@@ -11,7 +11,7 @@ class MatchingEngine{
 
     public:
     MatchingEngine(OrderBook& orderBook);
-    std::vector<Trade> match(const Order& order);
+    void match(const Order& order, std::vector<Trade>& trades);
         
     private:
     OrderBook& orderBook_;

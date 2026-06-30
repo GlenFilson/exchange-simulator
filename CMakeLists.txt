@@ -31,4 +31,4 @@ src/network_utils.cpp
 target_include_directories(tests PRIVATE include)
 target_link_libraries(tests GTest::GTest GTest::Main)
 
-add_test(Name exchange_tests COMMAND tests)
+add_test(NAME exchange_tests COMMAND tests)

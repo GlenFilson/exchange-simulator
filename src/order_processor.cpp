@@ -24,7 +24,8 @@ void OrderProcessor::process(InboundMessage& i_message){
                     .payload = std::move(i_message.payload)
                 };
                 Order order = serializer_.deserialize_order(message);
-                std::vector<Trade> trades = matching_engine_.match(order);
+                std::vector<Trade> trades;
+                matching_engine_.match(order, trades);
                 order_to_client_fd_[order.id()] = i_message.fd;
                 for(const Trade& trade : trades){
                     //batch client (taker) messages
