@@ -3,9 +3,8 @@
 #include <vector>
 #include <cstdint>
 
-struct InboundMessage{//total 61 bytes
-    int fd;//4 bytes
-    MessageType type;//1 bytes
-    size_t size;//8 bytes
-    uint8_t data[48];//48 bytes
+struct InboundMessage{
+    int fd;
+    MessageType type;
+    std::vector<uint8_t> payload;
 };

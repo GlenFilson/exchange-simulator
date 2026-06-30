@@ -5,7 +5,6 @@
 #include <chrono>
 #include <stdexcept>
 #include <iostream>
-#include <cstdint>
 
 /*
 using enum class instead of plain enum
@@ -25,7 +24,7 @@ enum class OrderType : uint8_t{
 
 class Order {
     public:
-        Order(uint64_t id, int64_t price, uint32_t quantity, Side side, OrderType orderType)
+        Order(uint64_t id, double price, uint32_t quantity, Side side, OrderType orderType)
         : timestamp_{static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
 		std::chrono::high_resolution_clock::now().time_since_epoch()
 	        ).count())}
@@ -44,7 +43,7 @@ class Order {
 
         uint64_t timestamp() const { return timestamp_;}
         uint64_t id() const {return id_;}
-        int64_t price()const {return price_;}
+        double price()const {return price_;}
         uint32_t quantity() const {return quantity_;}
         Side side() const {return side_;}
         OrderType orderType() const {return orderType_;}
@@ -67,7 +66,7 @@ class Order {
     private:
         uint64_t timestamp_;
         uint64_t id_;
-        int64_t price_;
+        double price_;
         uint32_t quantity_;
         Side side_;
         OrderType orderType_;

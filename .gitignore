@@ -25,6 +25,5 @@ compile_commands.json
 *.log
 .DS_Store
 .vscode/
-perf.data
-perf.data.*
+
 

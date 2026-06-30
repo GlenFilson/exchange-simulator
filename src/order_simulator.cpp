@@ -1,10 +1,9 @@
 #include "order_simulator.hpp"
 #include <cstdint>
 #include <chrono>
-#include <cmath>
 
 
-OrderSimulator::OrderSimulator(int64_t cp, uint64_t starting_id)
+OrderSimulator::OrderSimulator(double cp, uint64_t starting_id)
 	/*
 	initialiser list instead of explicit member assignment
 	member assignment initialises members with a default value, then reassigns it
@@ -27,8 +26,7 @@ Order OrderSimulator::generate_order(){
 
 	Side side = side_dist(rng_) == 0 ? Side::BID : Side::ASK;
 	OrderType orderType = order_type_dist(rng_) == 0 ? OrderType::LIMIT : OrderType::MARKET; 
-	int64_t price = (orderType == OrderType::LIMIT ? static_cast<int64_t>(std::round(price_dist(rng_))) : 0);
-
+	double price = (orderType == OrderType::LIMIT ? price_dist(rng_) : 0);
 	uint32_t quantity = quantity_dist(rng_);
 	
 	//assign the counter then increment it (post)
