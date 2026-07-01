@@ -32,3 +32,20 @@ target_include_directories(tests PRIVATE include)
 target_link_libraries(tests GTest::GTest GTest::Main)
 
 add_test(NAME exchange_tests COMMAND tests)
+
+#benchmarks
+find_package(benchmark REQUIRED)
+
+add_executable(benchmark
+    benchmarks/bm_orderbook.cpp
+    benchmarks/bm_matching_engine.cpp
+    benchmarks/bm_serializer.cpp
+    benchmarks/bm_ring_buffer.cpp
+    src/orderbook.cpp
+    src/matching_engine.cpp
+    src/binary_serializer.cpp
+    src/order_simulator.cpp
+    src/network_utils.cpp
+)
+target_include_directories(benchmark PRIVATE include)
+target_link_libraries(benchmark benchmark::benchmark benchmark::benchmark_main)

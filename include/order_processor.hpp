@@ -12,7 +12,7 @@
 
 class OrderProcessor{
     public:
-        OrderProcessor(SPSCRingBuffer<InboundMessage, DEFAULT_RING_CAPACITY>& iq, SPSCRingBuffer<OutboundMessage, DEFAULT_RING_CAPACITY>& oq, MatchingEngine& me, OrderBook& ob, Serializer& s)
+        OrderProcessor(SPSCRingBuffer<InboundMessage, 8192>& iq, SPSCRingBuffer<OutboundMessage, 8192>& oq, MatchingEngine& me, OrderBook& ob, Serializer& s)
             : inbound_queue_{iq}
             , outbound_queue_{oq}
             , matching_engine_{me}
@@ -26,8 +26,8 @@ class OrderProcessor{
     private:
         // ThreadSafeQueue<InboundMessage>& inbound_queue_;
         // ThreadSafeQueue<OutboundMessage>& outbound_queue_;
-        SPSCRingBuffer<InboundMessage, DEFAULT_RING_CAPACITY>& inbound_queue_;
-        SPSCRingBuffer<OutboundMessage, DEFAULT_RING_CAPACITY>& outbound_queue_;
+        SPSCRingBuffer<InboundMessage, 8192>& inbound_queue_;
+        SPSCRingBuffer<OutboundMessage, 8192>& outbound_queue_;
         MatchingEngine& matching_engine_;
         OrderBook& orderbook_;
         std::vector<Trade> trades_;
